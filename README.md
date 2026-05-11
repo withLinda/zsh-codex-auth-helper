@@ -4,6 +4,8 @@
 
 It gives Codex App users a simple interface for login, import, switch, list, remove, and restart flows, while still showing the real terminal output so you always know what is happening.
 
+![Codex Auth Helper app showing account list output](docs/codex-auth-helper-screenshot.png)
+
 ## Why Use It
 
 - Switch Codex accounts faster from a desktop app.
