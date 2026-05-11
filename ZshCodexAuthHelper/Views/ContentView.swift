@@ -5,6 +5,7 @@ struct ContentView: View {
 
     @StateObject private var transcriptStore = TerminalTranscriptStore()
     @StateObject private var runner = CommandRunner()
+    @StateObject private var authSessionMonitor = AuthSessionMonitor()
 
     private let commandFactory: CodexCommandFactory
 
@@ -23,6 +24,7 @@ struct ContentView: View {
             CommandRailView(
                 alias: $alias,
                 authFilePath: $authFilePath,
+                authSession: authSessionMonitor.info,
                 isRunning: runner.isRunning,
                 runLogin: { run(commandFactory.login(codexResourceDirectory: codexResourceDirectory)) },
                 runImport: runImport,
@@ -44,6 +46,20 @@ struct ContentView: View {
             }
         } message: {
             Text("This starts codex-auth remove in the terminal. You can still answer its prompt before anything is removed.")
+        }
+        .onAppear {
+            authSessionMonitor.start(authFilePath: authFilePath)
+        }
+        .onDisappear {
+            authSessionMonitor.stop()
+        }
+        .onChange(of: authFilePath) { _, newPath in
+            authSessionMonitor.updateAuthFilePath(newPath)
+        }
+        .onChange(of: runner.isRunning) { wasRunning, isRunning in
+            if wasRunning, isRunning == false {
+                authSessionMonitor.refreshCurrent()
+            }
         }
     }
 

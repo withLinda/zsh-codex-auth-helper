@@ -4,6 +4,7 @@ struct CommandRailView: View {
     @Binding var alias: String
     @Binding var authFilePath: String
 
+    let authSession: AuthSessionInfo
     let isRunning: Bool
     let runLogin: () -> Void
     let runImport: () -> Void
@@ -35,6 +36,7 @@ struct CommandRailView: View {
                     .foregroundStyle(ThemeTokens.Colors.primaryText)
 
                 VStack(alignment: .leading, spacing: ThemeTokens.Spacing.tight) {
+                    AuthSessionIndicatorView(info: authSession)
                     LabeledTextField(title: "Alias", text: $alias)
                     LabeledTextField(title: "Auth file", text: $authFilePath, monospaced: true)
                 }
@@ -83,6 +85,47 @@ struct CommandRailView: View {
                 .fill(ThemeTokens.Colors.border)
                 .frame(width: 1)
         }
+    }
+}
+
+private struct AuthSessionIndicatorView: View {
+    let info: AuthSessionInfo
+
+    var body: some View {
+        HStack(spacing: ThemeTokens.Spacing.normal) {
+            Image(systemName: info.needsAttention ? "exclamationmark.triangle" : "person.crop.circle")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(info.needsAttention ? ThemeTokens.Colors.warning : ThemeTokens.Colors.info)
+                .frame(width: 20)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(info.title)
+                    .font(.callout.weight(.medium))
+                    .foregroundStyle(ThemeTokens.Colors.primaryText)
+                    .lineLimit(2)
+                    .textSelection(.enabled)
+                    .layoutPriority(1)
+
+                Text(info.detail)
+                    .font(.caption)
+                    .foregroundStyle(info.needsAttention ? ThemeTokens.Colors.warning : ThemeTokens.Colors.supportText)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, ThemeTokens.Spacing.normal)
+        .padding(.vertical, 9)
+        .frame(maxWidth: .infinity, minHeight: 46, alignment: .leading)
+        .background(ThemeTokens.Colors.fieldSurface)
+        .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous)
+                .stroke(info.needsAttention ? ThemeTokens.Colors.warning.opacity(0.55) : ThemeTokens.Colors.border, lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Auth account")
+        .accessibilityValue("\(info.title), \(info.detail)")
     }
 }
 
@@ -143,4 +186,3 @@ private struct CommandButton: View {
         .opacity(0.95)
     }
 }
-
