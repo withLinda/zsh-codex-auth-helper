@@ -126,6 +126,84 @@ struct CodexCommandFactoryTests {
         }
     }
 
+    @Test func switchAccountPassesQueryAsSeparateArgument() throws {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = try factory.switchAccount(query: "damar")
+
+        #expect(command.executable == "/opt/homebrew/bin/codex-auth")
+        #expect(command.arguments == ["switch", "damar"])
+        #expect(command.displayCommand == "codex-auth switch damar")
+    }
+
+    @Test func switchAccountDisplayCommandQuotesSpacedQueryButKeepsOneArgument() throws {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = try factory.switchAccount(query: "personal account")
+
+        #expect(command.arguments == ["switch", "personal account"])
+        #expect(command.displayCommand == "codex-auth switch 'personal account'")
+    }
+
+    @Test func switchAccountDisplayCommandEscapesQuotedQueryButKeepsOneArgument() throws {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = try factory.switchAccount(query: "dama'r")
+
+        #expect(command.arguments == ["switch", "dama'r"])
+        #expect(command.displayCommand == #"codex-auth switch 'dama'\''r'"#)
+    }
+
+    @Test func switchAccountRejectsEmptyQuery() {
+        let factory = CodexCommandFactory(
+            resolver: .init(environmentPath: "", fileExists: { _ in true }),
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        #expect(throws: CommandFactoryError.self) {
+            try factory.switchAccount(query: "   ")
+        }
+    }
+
+    @Test func commandDraftParserBuildsSwitchCommandFromPreparedDraft() throws {
+        let draft = try CommandDraftParser.parse("codex-auth switch damar")
+
+        #expect(draft == .switchAccount(query: "damar"))
+    }
+
+    @Test func commandDraftParserRejectsBareSwitchDraft() {
+        #expect(throws: CommandDraftParseError.self) {
+            try CommandDraftParser.parse("codex-auth switch ")
+        }
+    }
+
+    @Test func commandDraftParserRejectsUnsupportedCommands() {
+        #expect(throws: CommandDraftParseError.self) {
+            try CommandDraftParser.parse("codex-auth list")
+        }
+    }
+
     @Test func removeCommandIsMarkedDestructive() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/opt/homebrew/bin",
@@ -157,8 +235,11 @@ struct CodexCommandFactoryTests {
         #expect(script.contains("pkill -9 -x Codex") == false)
         #expect(command.displayCommand.contains("osascript quit Codex") == false)
         #expect(command.displayCommand.contains("pkill -9 -x Codex") == false)
-        #expect(script.contains("waitForCodexExit 100 0.1"))
+        #expect(script.contains("waitForCodexExit 30 0.1"))
+        #expect(script.contains("waitForCodexExit 10 0.1"))
         #expect(script.contains("waitForCodexExit 20 0.1"))
+        #expect(script.contains("waitForCodexExit 100 0.1") == false)
+        #expect(script.contains("waitForCodexExit 50 0.1") == false)
         #expect(script.contains("/usr/bin/open \"$app_bundle\""))
         #expect(script.contains("/usr/bin/open -b \"$bundle_id\""))
     }

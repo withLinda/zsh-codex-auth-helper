@@ -4,6 +4,7 @@ enum CommandFactoryError: LocalizedError, Equatable {
     case missingExecutable(String)
     case missingAlias
     case missingAuthFilePath
+    case missingSwitchQuery
 
     var errorDescription: String? {
         switch self {
@@ -13,6 +14,8 @@ enum CommandFactoryError: LocalizedError, Equatable {
             return "Add an alias before importing."
         case .missingAuthFilePath:
             return "Add an auth file path before importing."
+        case .missingSwitchQuery:
+            return "Add an alias after codex-auth switch before running."
         }
     }
 }
@@ -80,16 +83,23 @@ struct CodexCommandFactory {
         )
     }
 
-    func switchAccount() throws -> CommandDefinition {
+    func switchAccount(query: String) throws -> CommandDefinition {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.isEmpty == false else {
+            throw CommandFactoryError.missingSwitchQuery
+        }
+
         let executable = try codexAuthExecutable()
+        let arguments = ["switch", trimmedQuery]
+
         return CommandDefinition(
             id: "switch",
             title: "Switch Account",
             systemImage: "arrow.triangle.2.circlepath",
             executable: executable,
-            arguments: ["switch"],
+            arguments: arguments,
             environment: codexAuthEnvironment(),
-            displayCommand: "codex-auth switch"
+            displayCommand: ShellQuoting.displayCommand(executable: "codex-auth", arguments: arguments)
         )
     }
 
@@ -163,16 +173,16 @@ struct CodexCommandFactory {
         }
 
         /usr/bin/osascript -e 'tell application id "com.openai.codex" to quit' 2>/dev/null || true
-        waitForCodexExit 100 0.1 || true
+        waitForCodexExit 30 0.1 || true
 
         if [[ -n "$(codexPids)" ]]; then
           signalCodex TERM
-          waitForCodexExit 20 0.1 || true
+          waitForCodexExit 10 0.1 || true
         fi
 
         if [[ -n "$(codexPids)" ]]; then
           signalCodex KILL
-          waitForCodexExit 50 0.1 || true
+          waitForCodexExit 20 0.1 || true
         fi
 
         if [[ -d "$app_bundle" ]]; then

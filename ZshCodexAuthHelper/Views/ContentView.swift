@@ -11,6 +11,8 @@ struct ContentView: View {
 
     @State private var authFilePath: String
     @State private var alias: String
+    @State private var terminalInput = ""
+    @State private var terminalInputFocusRequest = 0
     @State private var showRemoveConfirmation = false
 
     init(commandFactory: CodexCommandFactory = .live()) {
@@ -28,14 +30,20 @@ struct ContentView: View {
                 isRunning: runner.isRunning,
                 runLogin: { run(commandFactory.login(codexResourceDirectory: codexResourceDirectory)) },
                 runImport: runImport,
-                runSwitch: { runFactoryCommand(commandFactory.switchAccount) },
+                runSwitch: prepareSwitchDraft,
                 runRestart: { run(commandFactory.restartCodex(codexResourceDirectory: codexResourceDirectory)) },
                 runList: { runFactoryCommand(commandFactory.list) },
                 requestRemove: { showRemoveConfirmation = true }
             )
             .frame(minWidth: 320, idealWidth: 360, maxWidth: 400)
 
-            TerminalPanelView(store: transcriptStore, runner: runner)
+            TerminalPanelView(
+                store: transcriptStore,
+                runner: runner,
+                input: $terminalInput,
+                focusRequest: terminalInputFocusRequest,
+                submitDraft: submitTerminalDraft
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(ThemeTokens.Colors.appBackground)
@@ -67,6 +75,26 @@ struct ContentView: View {
         do {
             let command = try commandFactory.importAuth(authFilePath: authFilePath, alias: alias)
             run(command)
+        } catch {
+            transcriptStore.failToStart(error)
+        }
+    }
+
+    private func prepareSwitchDraft() {
+        terminalInput = "codex-auth switch "
+        terminalInputFocusRequest += 1
+    }
+
+    private func submitTerminalDraft(_ draft: String) {
+        do {
+            switch try CommandDraftParser.parse(draft) {
+            case .switchAccount(let query):
+                let command = try commandFactory.switchAccount(query: query)
+                terminalInput = ""
+                run(command)
+            }
+        } catch let error as CommandDraftParseError {
+            transcriptStore.appendSystemLine(error.localizedDescription)
         } catch {
             transcriptStore.failToStart(error)
         }

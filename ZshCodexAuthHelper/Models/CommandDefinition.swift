@@ -6,6 +6,50 @@ enum CommandRisk: Equatable {
     case restartsApplication
 }
 
+enum CommandDraftParseError: LocalizedError, Equatable {
+    case missingSwitchQuery
+    case unsupportedCommand
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSwitchQuery:
+            return "Add an alias after codex-auth switch before running."
+        case .unsupportedCommand:
+            return "Only codex-auth switch <alias> can run from this input."
+        }
+    }
+}
+
+enum CommandDraft: Equatable {
+    case switchAccount(query: String)
+}
+
+enum CommandDraftParser {
+    private static let switchCommand = "codex-auth switch"
+
+    static func parse(_ input: String) throws -> CommandDraft {
+        let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedInput.hasPrefix(switchCommand) else {
+            throw CommandDraftParseError.unsupportedCommand
+        }
+
+        let suffix = trimmedInput.dropFirst(switchCommand.count)
+        guard suffix.first?.isWhitespace == true else {
+            if suffix.isEmpty {
+                throw CommandDraftParseError.missingSwitchQuery
+            }
+            throw CommandDraftParseError.unsupportedCommand
+        }
+
+        let query = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard query.isEmpty == false else {
+            throw CommandDraftParseError.missingSwitchQuery
+        }
+
+        return .switchAccount(query: query)
+    }
+}
+
 struct CommandDefinition: Identifiable, Equatable {
     let id: String
     let title: String
@@ -36,4 +80,3 @@ struct CommandDefinition: Identifiable, Equatable {
         self.displayCommand = displayCommand
     }
 }
-

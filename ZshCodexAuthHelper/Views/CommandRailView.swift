@@ -56,7 +56,7 @@ struct CommandRailView: View {
                     .foregroundStyle(ThemeTokens.Colors.primaryText)
 
                 CommandButton(title: "Login", systemImage: "person.crop.circle.badge.plus", action: runLogin)
-                CommandButton(title: "Switch Account", systemImage: "arrow.triangle.2.circlepath", action: runSwitch)
+                CommandButton(title: "Switch Account...", systemImage: "arrow.triangle.2.circlepath", action: runSwitch)
                 CommandButton(title: "Restart Codex", systemImage: "power", tint: ThemeTokens.Colors.warning, action: runRestart)
                 CommandButton(title: "List Accounts", systemImage: "list.bullet.rectangle", action: runList)
             }

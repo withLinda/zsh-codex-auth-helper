@@ -4,8 +4,10 @@ import SwiftUI
 struct TerminalPanelView: View {
     @ObservedObject var store: TerminalTranscriptStore
     @ObservedObject var runner: CommandRunner
+    @Binding var input: String
 
-    @State private var input = ""
+    let focusRequest: Int
+    let submitDraft: (String) -> Void
 
     var body: some View {
         VStack(spacing: 0) {
@@ -84,7 +86,7 @@ struct TerminalPanelView: View {
                 }
             }
             .background(ThemeTokens.Colors.terminalBackground)
-            .onChange(of: store.transcript) { _ in
+            .onChange(of: store.transcript) { _, _ in
                 withAnimation(.easeOut(duration: 0.12)) {
                     proxy.scrollTo("bottom", anchor: .bottom)
                 }
@@ -96,14 +98,15 @@ struct TerminalPanelView: View {
         HStack(spacing: ThemeTokens.Spacing.normal) {
             Image(systemName: "chevron.right")
                 .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(runner.isRunning ? ThemeTokens.Colors.accent : ThemeTokens.Colors.mutedText)
+                .foregroundStyle(canSendInput ? ThemeTokens.Colors.accent : ThemeTokens.Colors.mutedText)
 
-            TextField("Type input for the running command", text: $input)
-                .textFieldStyle(.plain)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundStyle(ThemeTokens.Colors.primaryText)
-                .disabled(runner.isRunning == false)
-                .onSubmit(sendInput)
+            TerminalInputTextField(
+                text: $input,
+                placeholder: inputPlaceholder,
+                focusRequest: focusRequest,
+                onSubmit: sendInput
+            )
+            .frame(minHeight: 22)
 
             Button {
                 sendInput()
@@ -112,13 +115,29 @@ struct TerminalPanelView: View {
                     .accessibilityLabel("Send input")
             }
             .buttonStyle(.plain)
-            .foregroundStyle(runner.isRunning ? ThemeTokens.Colors.accent : ThemeTokens.Colors.mutedText)
+            .foregroundStyle(canSendInput ? ThemeTokens.Colors.accent : ThemeTokens.Colors.mutedText)
             .frame(width: 34, height: 34)
-            .disabled(runner.isRunning == false || input.isEmpty)
+            .disabled(canSendInput == false)
         }
         .padding(.horizontal, ThemeTokens.Spacing.section)
         .padding(.vertical, ThemeTokens.Spacing.normal)
         .background(ThemeTokens.Colors.panelSurface)
+    }
+
+    private var inputPlaceholder: String {
+        if runner.isRunning {
+            return "Type input for the running command"
+        }
+
+        return "Use Switch Account... then add an alias"
+    }
+
+    private var canSendInput: Bool {
+        if runner.isRunning {
+            return input.isEmpty == false
+        }
+
+        return input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
     }
 
     private var statusText: String {
@@ -146,12 +165,16 @@ struct TerminalPanelView: View {
     }
 
     private func sendInput() {
-        guard input.isEmpty == false else {
+        guard canSendInput else {
             return
         }
 
-        runner.sendInput(input + "\n")
-        input = ""
+        if runner.isRunning {
+            runner.sendInput(input + "\n")
+            input = ""
+        } else {
+            submitDraft(input)
+        }
     }
 }
 
@@ -170,3 +193,110 @@ private struct ToolbarButtonStyle: ButtonStyle {
     }
 }
 
+private struct TerminalInputTextField: NSViewRepresentable {
+    @Binding var text: String
+
+    let placeholder: String
+    let focusRequest: Int
+    let onSubmit: () -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    func makeNSView(context: Context) -> NSTextField {
+        let textField = NSTextField()
+        textField.delegate = context.coordinator
+        textField.target = context.coordinator
+        textField.action = #selector(Coordinator.submit)
+        textField.isBordered = false
+        textField.isBezeled = false
+        textField.drawsBackground = false
+        textField.focusRingType = .none
+        textField.usesSingleLineMode = true
+        textField.lineBreakMode = .byClipping
+        textField.font = Self.font
+        textField.textColor = Self.textColor
+        return textField
+    }
+
+    func updateNSView(_ textField: NSTextField, context: Context) {
+        context.coordinator.parent = self
+
+        if textField.stringValue != text {
+            textField.stringValue = text
+        }
+
+        textField.placeholderAttributedString = NSAttributedString(
+            string: placeholder,
+            attributes: [
+                .foregroundColor: Self.placeholderColor,
+                .font: Self.font
+            ]
+        )
+
+        guard context.coordinator.lastFocusRequest != focusRequest else {
+            return
+        }
+
+        context.coordinator.lastFocusRequest = focusRequest
+        DispatchQueue.main.async {
+            textField.window?.makeFirstResponder(textField)
+            Self.placeCursorAtEnd(of: textField)
+
+            DispatchQueue.main.async {
+                Self.placeCursorAtEnd(of: textField)
+            }
+        }
+    }
+
+    private static let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
+    private static let textColor = NSColor(
+        red: CGFloat(0xD3) / 255.0,
+        green: CGFloat(0xC6) / 255.0,
+        blue: CGFloat(0xAA) / 255.0,
+        alpha: 1
+    )
+    private static let placeholderColor = NSColor(
+        red: CGFloat(0x7A) / 255.0,
+        green: CGFloat(0x84) / 255.0,
+        blue: CGFloat(0x78) / 255.0,
+        alpha: 1
+    )
+
+    private static func placeCursorAtEnd(of textField: NSTextField) {
+        let end = textField.stringValue.utf16.count
+        textField.currentEditor()?.selectedRange = NSRange(location: end, length: 0)
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: TerminalInputTextField
+        var lastFocusRequest: Int
+
+        init(_ parent: TerminalInputTextField) {
+            self.parent = parent
+            self.lastFocusRequest = parent.focusRequest
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let textField = notification.object as? NSTextField else {
+                return
+            }
+
+            parent.text = textField.stringValue
+        }
+
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy commandSelector: Selector) -> Bool {
+            guard commandSelector == #selector(NSResponder.insertNewline(_:)) else {
+                return false
+            }
+
+            parent.onSubmit()
+            return true
+        }
+
+        @objc func submit(_ sender: NSTextField) {
+            parent.onSubmit()
+        }
+    }
+}
