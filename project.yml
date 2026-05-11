@@ -1,0 +1,58 @@
+name: ZshCodexAuthHelper
+
+options:
+  bundleIdPrefix: com.linda
+  deploymentTarget:
+    macOS: "26.0"
+  xcodeVersion: "26.0"
+
+settings:
+  base:
+    CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED: YES
+    DEVELOPMENT_TEAM: ""
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    SWIFT_VERSION: "5.0"
+
+targets:
+  ZshCodexAuthHelper:
+    type: application
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: ZshCodexAuthHelper
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.linda.zsh-codexauth-helper
+        PRODUCT_NAME: ZshCodexAuthHelper
+        INFOPLIST_KEY_CFBundleDisplayName: Codex Auth Helper
+        INFOPLIST_KEY_CFBundleName: Codex Auth Helper
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
+        INFOPLIST_KEY_NSHumanReadableCopyright: ""
+        GENERATE_INFOPLIST_FILE: YES
+        ENABLE_HARDENED_RUNTIME: NO
+        CODE_SIGNING_ALLOWED: NO
+        ENABLE_TESTABILITY: YES
+
+  ZshCodexAuthHelperTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "26.0"
+    sources:
+      - path: ZshCodexAuthHelperTests
+    dependencies:
+      - target: ZshCodexAuthHelper
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.linda.zsh-codexauth-helper.tests
+        GENERATE_INFOPLIST_FILE: YES
+
+schemes:
+  ZshCodexAuthHelper:
+    build:
+      targets:
+        ZshCodexAuthHelper: all
+        ZshCodexAuthHelperTests: [test]
+    test:
+      targets:
+        - ZshCodexAuthHelperTests
+
