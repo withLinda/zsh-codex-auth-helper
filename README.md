@@ -27,6 +27,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Restart Codex**: quits Codex App, waits for its helper processes to exit, and then reopens it after account changes.
 - **Interactive terminal**: send input to running commands from the app.
 - **Link detection**: open the latest detected login link with one click.
+- **One-time code detection**: copy detected login codes with one click.
 - **Configurable Codex path**: set the Codex resources path in Settings if Codex App is installed somewhere else.
 
 ## Requirements
@@ -47,12 +48,15 @@ npm install -g @loongphy/codex-auth
 
 ### Install From DMG
 
-Download `CodexAuthHelper-v2026.05.13.dmg` from the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest). The matching checksum file is `CodexAuthHelper-v2026.05.13.dmg.sha256`.
+Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then download these two files from **Assets**:
 
-If you want to verify the download, put both files in the same folder and run:
+- `CodexAuthHelper-v...dmg`
+- `CodexAuthHelper-v...dmg.sha256`
+
+The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
 ```bash
-shasum -a 256 -c CodexAuthHelper-v2026.05.13.dmg.sha256
+shasum -a 256 -c CodexAuthHelper-v*.dmg.sha256
 ```
 
 Then install it:

@@ -1,9 +1,25 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${1:-2026.05.13}"
-VERSION="${VERSION#v}"
-TAG="v$VERSION"
+RELEASE_VERSION="${1:-2026.05.13.2}"
+RELEASE_VERSION="${RELEASE_VERSION#v}"
+TAG="v$RELEASE_VERSION"
+
+if [[ -z "${APP_VERSION:-}" ]]; then
+  if [[ "$RELEASE_VERSION" =~ ^([0-9]+[.][0-9]+[.][0-9]+)([.-].*)?$ ]]; then
+    APP_VERSION="${BASH_REMATCH[1]}"
+  else
+    APP_VERSION="$RELEASE_VERSION"
+  fi
+fi
+
+if [[ -z "${BUILD_NUMBER:-}" ]]; then
+  if [[ "$RELEASE_VERSION" =~ ^[0-9]+[.][0-9]+[.][0-9]+[.]([0-9]+)$ ]]; then
+    BUILD_NUMBER="${BASH_REMATCH[1]}"
+  else
+    BUILD_NUMBER=1
+  fi
+fi
 
 APP_NAME="ZshCodexAuthHelper"
 SCHEME="ZshCodexAuthHelper"
@@ -22,7 +38,7 @@ VOLUME_NAME="Codex Auth Helper $TAG"
 
 cd "$ROOT_DIR"
 
-echo "Building $APP_NAME $TAG..."
+echo "Building $APP_NAME $APP_VERSION ($BUILD_NUMBER) for release $TAG..."
 xcodegen generate >/dev/null
 xcodebuild \
   -project "$PROJECT" \
@@ -31,8 +47,8 @@ xcodebuild \
   -destination 'platform=macOS' \
   -derivedDataPath "$DERIVED_DATA" \
   CODE_SIGNING_ALLOWED=NO \
-  MARKETING_VERSION="$VERSION" \
-  CURRENT_PROJECT_VERSION=1 \
+  MARKETING_VERSION="$APP_VERSION" \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   build
 
 rm -rf "$WORK_DIR"
