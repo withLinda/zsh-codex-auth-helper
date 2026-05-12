@@ -9,6 +9,9 @@ struct TerminalPanelView: View {
     let focusRequest: Int
     let submitDraft: (String) -> Void
 
+    @State private var copiedDeviceCode: String?
+    @State private var copyFeedbackTask: Task<Void, Never>?
+
     var body: some View {
         VStack(spacing: 0) {
             terminalHeader
@@ -24,6 +27,11 @@ struct TerminalPanelView: View {
             inputBar
         }
         .background(ThemeTokens.Colors.panelSurface)
+        .onChange(of: store.latestDeviceCode) { _, _ in
+            copiedDeviceCode = nil
+            copyFeedbackTask?.cancel()
+            copyFeedbackTask = nil
+        }
     }
 
     private var terminalHeader: some View {
@@ -47,6 +55,24 @@ struct TerminalPanelView: View {
                     Label("Open Link", systemImage: "safari")
                 }
                 .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.accent))
+            }
+
+            if let deviceCode = store.latestDeviceCode {
+                Button {
+                    copyDeviceCode(deviceCode)
+                } label: {
+                    Label(
+                        "Copy Code",
+                        systemImage: copiedDeviceCode == deviceCode ? "checkmark" : "doc.on.doc"
+                    )
+                }
+                .buttonStyle(
+                    ToolbarButtonStyle(
+                        tint: copiedDeviceCode == deviceCode ? ThemeTokens.Colors.success : ThemeTokens.Colors.info
+                    )
+                )
+                .help("Copy one-time code")
+                .accessibilityLabel("Copy one-time code")
             }
 
             Button {
@@ -73,7 +99,7 @@ struct TerminalPanelView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(store.transcript.isEmpty ? "Output will appear here." : store.transcript)
+                    Text(terminalOutputText)
                         .font(.system(.callout, design: .monospaced))
                         .foregroundStyle(store.transcript.isEmpty ? ThemeTokens.Colors.mutedText : ThemeTokens.Colors.primaryText)
                         .textSelection(.enabled)
@@ -92,6 +118,10 @@ struct TerminalPanelView: View {
                 }
             }
         }
+    }
+
+    private var terminalOutputText: String {
+        store.displayTranscript.isEmpty ? "Output will appear here." : store.displayTranscript
     }
 
     private var inputBar: some View {
@@ -174,6 +204,29 @@ struct TerminalPanelView: View {
             input = ""
         } else {
             submitDraft(input)
+        }
+    }
+
+    private func copyDeviceCode(_ deviceCode: String) {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        guard pasteboard.setString(deviceCode, forType: .string) else {
+            return
+        }
+
+        copiedDeviceCode = deviceCode
+        copyFeedbackTask?.cancel()
+        copyFeedbackTask = Task {
+            try? await Task.sleep(nanoseconds: 1_200_000_000)
+            guard Task.isCancelled == false else {
+                return
+            }
+            await MainActor.run {
+                if copiedDeviceCode == deviceCode {
+                    copiedDeviceCode = nil
+                }
+                copyFeedbackTask = nil
+            }
         }
     }
 }
