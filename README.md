@@ -47,7 +47,13 @@ npm install -g @loongphy/codex-auth
 
 ### Install From DMG
 
-Download `CodexAuthHelper-v2026.05.12.dmg` from the [Releases page](https://github.com/withLinda/zsh-codex-auth-helper/releases/tag/v2026.05.12).
+Download `CodexAuthHelper-v2026.05.13.dmg` from the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest). The matching checksum file is `CodexAuthHelper-v2026.05.13.dmg.sha256`.
+
+If you want to verify the download, put both files in the same folder and run:
+
+```bash
+shasum -a 256 -c CodexAuthHelper-v2026.05.13.dmg.sha256
+```
 
 Then install it:
 

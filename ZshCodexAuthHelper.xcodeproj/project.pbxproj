@@ -331,7 +331,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 2026.05.12;
+				MARKETING_VERSION = 2026.05.13;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.linda.zsh-codexauth-helper";
 				PRODUCT_NAME = ZshCodexAuthHelper;
 				SDKROOT = macosx;
@@ -377,7 +377,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 2026.05.12;
+				MARKETING_VERSION = 2026.05.13;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.linda.zsh-codexauth-helper";
 				PRODUCT_NAME = ZshCodexAuthHelper;
 				SDKROOT = macosx;

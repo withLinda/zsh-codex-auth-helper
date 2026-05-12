@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="${1:-2026.05.12}"
+VERSION="${1:-2026.05.13}"
 VERSION="${VERSION#v}"
 TAG="v$VERSION"
 
@@ -56,7 +56,7 @@ hdiutil verify "$DMG_PATH"
 
 echo "Writing checksum..."
 HASH="$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')"
-printf '%s  dist/%s\n' "$HASH" "$DMG_NAME" > "$CHECKSUM_PATH"
+printf '%s  %s\n' "$HASH" "$DMG_NAME" > "$CHECKSUM_PATH"
 
 echo "Created:"
 echo "  $DMG_PATH"
