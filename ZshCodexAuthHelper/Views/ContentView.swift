@@ -13,7 +13,6 @@ struct ContentView: View {
     @State private var alias: String
     @State private var terminalInput = ""
     @State private var terminalInputFocusRequest = 0
-    @State private var showRemoveConfirmation = false
 
     init(commandFactory: CodexCommandFactory = .live()) {
         self.commandFactory = commandFactory
@@ -33,7 +32,7 @@ struct ContentView: View {
                 runSwitch: prepareSwitchDraft,
                 runRestart: { run(commandFactory.restartCodex(codexResourceDirectory: codexResourceDirectory)) },
                 runList: { runFactoryCommand(commandFactory.list) },
-                requestRemove: { showRemoveConfirmation = true }
+                requestRemove: prepareRemoveDraft
             )
             .frame(minWidth: 320, idealWidth: 360, maxWidth: 400)
 
@@ -47,14 +46,6 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(ThemeTokens.Colors.appBackground)
-        .alert("Remove account?", isPresented: $showRemoveConfirmation) {
-            Button("Cancel", role: .cancel) {}
-            Button("Run Remove", role: .destructive) {
-                runFactoryCommand(commandFactory.remove)
-            }
-        } message: {
-            Text("This starts codex-auth remove in the terminal. You can still answer its prompt before anything is removed.")
-        }
         .onAppear {
             authSessionMonitor.start(authFilePath: authFilePath)
         }
@@ -85,11 +76,20 @@ struct ContentView: View {
         terminalInputFocusRequest += 1
     }
 
+    private func prepareRemoveDraft() {
+        terminalInput = "codex-auth remove "
+        terminalInputFocusRequest += 1
+    }
+
     private func submitTerminalDraft(_ draft: String) {
         do {
             switch try CommandDraftParser.parse(draft) {
             case .switchAccount(let query):
                 let command = try commandFactory.switchAccount(query: query)
+                terminalInput = ""
+                run(command)
+            case .removeAccount(let alias):
+                let command = try commandFactory.remove(alias: alias)
                 terminalInput = ""
                 run(command)
             }

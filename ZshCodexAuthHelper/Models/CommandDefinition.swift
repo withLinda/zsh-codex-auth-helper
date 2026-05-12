@@ -8,45 +8,74 @@ enum CommandRisk: Equatable {
 
 enum CommandDraftParseError: LocalizedError, Equatable {
     case missingSwitchQuery
+    case missingRemoveAlias
     case unsupportedCommand
 
     var errorDescription: String? {
         switch self {
         case .missingSwitchQuery:
             return "Add an alias after codex-auth switch before running."
+        case .missingRemoveAlias:
+            return "Add an alias after codex-auth remove before running."
         case .unsupportedCommand:
-            return "Only codex-auth switch <alias> can run from this input."
+            return "Only codex-auth switch <alias> or codex-auth remove <alias> can run from this input."
         }
     }
 }
 
 enum CommandDraft: Equatable {
     case switchAccount(query: String)
+    case removeAccount(alias: String)
 }
 
 enum CommandDraftParser {
     private static let switchCommand = "codex-auth switch"
+    private static let removeCommand = "codex-auth remove"
 
     static func parse(_ input: String) throws -> CommandDraft {
         let trimmedInput = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedInput.hasPrefix(switchCommand) else {
-            throw CommandDraftParseError.unsupportedCommand
+
+        if trimmedInput.hasPrefix(switchCommand) {
+            return try parseArgument(
+                from: trimmedInput,
+                command: switchCommand,
+                missingError: .missingSwitchQuery,
+                build: CommandDraft.switchAccount(query:)
+            )
         }
 
-        let suffix = trimmedInput.dropFirst(switchCommand.count)
+        if trimmedInput.hasPrefix(removeCommand) {
+            return try parseArgument(
+                from: trimmedInput,
+                command: removeCommand,
+                missingError: .missingRemoveAlias,
+                build: CommandDraft.removeAccount(alias:)
+            )
+        }
+
+        throw CommandDraftParseError.unsupportedCommand
+    }
+
+    private static func parseArgument(
+        from trimmedInput: String,
+        command: String,
+        missingError: CommandDraftParseError,
+        build: (String) -> CommandDraft
+    ) throws -> CommandDraft {
+        let suffix = trimmedInput.dropFirst(command.count)
         guard suffix.first?.isWhitespace == true else {
             if suffix.isEmpty {
-                throw CommandDraftParseError.missingSwitchQuery
+                throw missingError
             }
             throw CommandDraftParseError.unsupportedCommand
         }
 
-        let query = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard query.isEmpty == false else {
-            throw CommandDraftParseError.missingSwitchQuery
+        let argument = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard argument.isEmpty == false else {
+            throw missingError
         }
 
-        return .switchAccount(query: query)
+        return build(argument)
     }
 }
 

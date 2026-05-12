@@ -129,7 +129,7 @@ struct TerminalPanelView: View {
             return "Type input for the running command"
         }
 
-        return "Use Switch Account... then add an alias"
+        return "Use Switch or Remove, then add an alias"
     }
 
     private var canSendInput: Bool {

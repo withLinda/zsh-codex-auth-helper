@@ -192,19 +192,42 @@ struct CodexCommandFactoryTests {
         #expect(draft == .switchAccount(query: "damar"))
     }
 
+    @Test func commandDraftParserBuildsRemoveCommandFromPreparedDraft() throws {
+        let draft = try CommandDraftParser.parse("codex-auth remove damar")
+
+        #expect(draft == .removeAccount(alias: "damar"))
+    }
+
     @Test func commandDraftParserRejectsBareSwitchDraft() {
-        #expect(throws: CommandDraftParseError.self) {
+        #expect(throws: CommandDraftParseError.missingSwitchQuery) {
             try CommandDraftParser.parse("codex-auth switch ")
         }
     }
 
+    @Test func commandDraftParserRejectsBareRemoveDraft() {
+        #expect(throws: CommandDraftParseError.missingRemoveAlias) {
+            try CommandDraftParser.parse("codex-auth remove ")
+        }
+    }
+
     @Test func commandDraftParserRejectsUnsupportedCommands() {
-        #expect(throws: CommandDraftParseError.self) {
+        #expect(throws: CommandDraftParseError.unsupportedCommand) {
             try CommandDraftParser.parse("codex-auth list")
         }
     }
 
-    @Test func removeCommandIsMarkedDestructive() throws {
+    @Test func commandDraftParserUnsupportedCommandMessageMentionsSwitchAndRemove() {
+        do {
+            _ = try CommandDraftParser.parse("codex-auth list")
+            Issue.record("Expected unsupported command to throw.")
+        } catch let error as CommandDraftParseError {
+            #expect(error.localizedDescription == "Only codex-auth switch <alias> or codex-auth remove <alias> can run from this input.")
+        } catch {
+            Issue.record("Wrong error thrown: \(error)")
+        }
+    }
+
+    @Test func removeAccountPassesAliasAsSeparateArgument() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/opt/homebrew/bin",
             fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
@@ -214,9 +237,69 @@ struct CodexCommandFactoryTests {
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = try factory.remove()
+        let command = try factory.remove(alias: "damar")
 
-        #expect(command.arguments == ["remove"])
+        #expect(command.executable == "/opt/homebrew/bin/codex-auth")
+        #expect(command.arguments == ["remove", "damar"])
+        #expect(command.displayCommand == "codex-auth remove damar")
+    }
+
+    @Test func removeAccountDisplayCommandQuotesSpacedAliasButKeepsOneArgument() throws {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = try factory.remove(alias: "personal account")
+
+        #expect(command.arguments == ["remove", "personal account"])
+        #expect(command.displayCommand == "codex-auth remove 'personal account'")
+    }
+
+    @Test func removeAccountDisplayCommandEscapesQuotedAliasButKeepsOneArgument() throws {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = try factory.remove(alias: "dama'r")
+
+        #expect(command.arguments == ["remove", "dama'r"])
+        #expect(command.displayCommand == #"codex-auth remove 'dama'\''r'"#)
+    }
+
+    @Test func removeAccountRejectsEmptyAlias() {
+        let factory = CodexCommandFactory(
+            resolver: .init(environmentPath: "", fileExists: { _ in true }),
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        #expect(throws: CommandFactoryError.missingRemoveAlias) {
+            try factory.remove(alias: "   ")
+        }
+    }
+
+    @Test func removeAccountIsMarkedDestructive() throws {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = try factory.remove(alias: "damar")
+
+        #expect(command.arguments == ["remove", "damar"])
         #expect(command.risk == .destructive)
     }
 

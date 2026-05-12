@@ -5,6 +5,7 @@ enum CommandFactoryError: LocalizedError, Equatable {
     case missingAlias
     case missingAuthFilePath
     case missingSwitchQuery
+    case missingRemoveAlias
 
     var errorDescription: String? {
         switch self {
@@ -16,6 +17,8 @@ enum CommandFactoryError: LocalizedError, Equatable {
             return "Add an auth file path before importing."
         case .missingSwitchQuery:
             return "Add an alias after codex-auth switch before running."
+        case .missingRemoveAlias:
+            return "Add an alias after codex-auth remove before running."
         }
     }
 }
@@ -116,17 +119,24 @@ struct CodexCommandFactory {
         )
     }
 
-    func remove() throws -> CommandDefinition {
+    func remove(alias: String) throws -> CommandDefinition {
+        let trimmedAlias = alias.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedAlias.isEmpty == false else {
+            throw CommandFactoryError.missingRemoveAlias
+        }
+
         let executable = try codexAuthExecutable()
+        let arguments = ["remove", trimmedAlias]
+
         return CommandDefinition(
             id: "remove",
             title: "Remove Account",
             systemImage: "trash",
             executable: executable,
-            arguments: ["remove"],
+            arguments: arguments,
             environment: codexAuthEnvironment(),
             risk: .destructive,
-            displayCommand: "codex-auth remove"
+            displayCommand: ShellQuoting.displayCommand(executable: "codex-auth", arguments: arguments)
         )
     }
 

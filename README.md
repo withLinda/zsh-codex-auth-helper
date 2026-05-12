@@ -21,9 +21,9 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 
 - **Login**: runs `codex login --device-auth`.
 - **Import Auth**: imports an auth JSON file and saves it with an alias.
-- **Switch Account**: opens the interactive account switch flow.
+- **Switch Account**: prepares `codex-auth switch` so you can type the alias.
 - **List Accounts**: shows accounts managed by `codex-auth`.
-- **Remove Account**: starts the remove flow after a confirmation.
+- **Remove Account**: prepares `codex-auth remove` so you can type the alias.
 - **Restart Codex**: quits Codex App, waits for its helper processes to exit, and then reopens it after account changes.
 - **Interactive terminal**: send input to running commands from the app.
 - **Link detection**: open the latest detected login link with one click.
@@ -82,12 +82,12 @@ Then build and run the app from the project folder:
 3. Click **Login** if you need to sign in to Codex.
 4. Use **Import Auth** to save an auth file with an alias. The default path is `~/.codex/auth.json`.
 5. Click **List Accounts** to check saved accounts.
-6. Click **Switch Account** and follow the terminal prompt.
+6. Click **Switch Account**, type the alias in the terminal input, then press Return.
 7. Click **Restart Codex** so Codex App fully exits and reopens with the selected account.
 
 If Codex App is not installed at `/Applications/Codex.app`, open **Codex Auth Helper > Settings** and update the Codex resources path. The default is `/Applications/Codex.app/Contents/Resources`.
 
-Use **Remove Account** when you want to delete a saved account from `codex-auth`. The app asks for confirmation before starting the remove flow.
+Use **Remove Account** when you want to delete a saved account from `codex-auth`. The app prepares `codex-auth remove`; type the alias in the terminal input, then press Return.
 
 ## Built On codex-auth
 
