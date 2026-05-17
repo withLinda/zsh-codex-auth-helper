@@ -8,14 +8,24 @@ struct ContentView: View {
     @StateObject private var authSessionMonitor = AuthSessionMonitor()
 
     private let commandFactory: CodexCommandFactory
+    private let switchPreflightValidator: AuthSwitchPreflightValidator
 
     @State private var authFilePath: String
     @State private var alias: String
     @State private var terminalInput = ""
     @State private var terminalInputFocusRequest = 0
+    @State private var isCheckingSwitch = false
 
-    init(commandFactory: CodexCommandFactory = .live()) {
+    private var isBusy: Bool {
+        runner.isRunning || isCheckingSwitch
+    }
+
+    init(
+        commandFactory: CodexCommandFactory = .live(),
+        switchPreflightValidator: AuthSwitchPreflightValidator = AuthSwitchPreflightValidator()
+    ) {
         self.commandFactory = commandFactory
+        self.switchPreflightValidator = switchPreflightValidator
         _authFilePath = State(initialValue: commandFactory.defaultAuthFilePath)
         _alias = State(initialValue: "main")
     }
@@ -26,7 +36,7 @@ struct ContentView: View {
                 alias: $alias,
                 authFilePath: $authFilePath,
                 authSession: authSessionMonitor.info,
-                isRunning: runner.isRunning,
+                isRunning: isBusy,
                 runLogin: { run(commandFactory.login(codexResourceDirectory: codexResourceDirectory)) },
                 runImport: runImport,
                 runSwitch: prepareSwitchDraft,
@@ -85,9 +95,10 @@ struct ContentView: View {
         do {
             switch try CommandDraftParser.parse(draft) {
             case .switchAccount(let query):
-                let command = try commandFactory.switchAccount(query: query)
                 terminalInput = ""
-                run(command)
+                Task {
+                    await runPreflightSwitch(query: query)
+                }
             case .removeAccount(let alias):
                 let command = try commandFactory.remove(alias: alias)
                 terminalInput = ""
@@ -110,5 +121,26 @@ struct ContentView: View {
 
     private func run(_ command: CommandDefinition) {
         runner.start(command, transcriptStore: transcriptStore)
+    }
+
+    private func runPreflightSwitch(query: String) async {
+        guard isBusy == false else {
+            transcriptStore.appendSystemLine("A command is already running. Stop it before starting another one.")
+            return
+        }
+
+        isCheckingSwitch = true
+        transcriptStore.appendSystemLine("Checking saved login before switching...")
+
+        do {
+            let account = try await switchPreflightValidator.validateAndRefresh(query: query)
+            transcriptStore.appendSystemLine("Login check passed for \(account.email).")
+            let command = try commandFactory.switchAccount(query: query)
+            isCheckingSwitch = false
+            run(command)
+        } catch {
+            isCheckingSwitch = false
+            transcriptStore.appendSystemLine(error.localizedDescription)
+        }
     }
 }
