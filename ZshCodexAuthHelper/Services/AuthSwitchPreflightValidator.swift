@@ -68,17 +68,17 @@ enum AuthSwitchPreflightError: LocalizedError, Equatable {
         case .ambiguousAccount(let query):
             return "More than one saved account matches \"\(query)\". Use a full email, alias, or row number."
         case .missingRegistry:
-            return "No codex-auth registry was found. Run List Accounts or import an account first."
+            return "No codex-auth registry was found. Run List Accounts or Save / Update Login first."
         case .missingStoredAuth(let email):
-            return "Saved auth file for \(email) was not found. Please log in again and import this account."
+            return "Saved auth file for \(email) was not found. Log in again, then Save / Update Login. Alias is optional for existing accounts."
         case .missingRefreshToken(let email):
-            return "Saved login for \(email) has no refresh token. Please log in again and import this account."
+            return "Saved login for \(email) has no refresh token. Log in again, then Save / Update Login. Alias is optional for existing accounts."
         case .reloginRequired(let email, let reason):
-            return "Saved login for \(email) cannot refresh because its refresh token was \(reason.displayName). Please log in again and import this account before switching."
+            return "Saved login for \(email) cannot refresh because its refresh token was \(reason.displayName). Log in again, then Save / Update Login before switching. Alias is optional for existing accounts."
         case .accountMismatch(let email):
             return "The refresh check for \(email) returned a different account. No account was switched."
         case .invalidRefreshResponse(let email):
-            return "The refresh check for \(email) returned no usable tokens. No account was switched."
+            return "The refresh check for \(email) did not return a new refresh token. No account was switched."
         case .transient(let email, let message):
             if let email {
                 return "Could not check login for \(email): \(message). No account was switched."
@@ -138,28 +138,21 @@ struct AuthSwitchPreflightValidator {
 
         let response: OAuthRefreshResponse
         do {
-            response = try await refresher.refresh(refreshToken: refreshToken)
-        } catch let failure as OAuthRefreshFailure {
-            switch failure {
-            case .reloginRequired(let reason):
-                throw AuthSwitchPreflightError.reloginRequired(email: record.email, reason: reason)
-            case .transient(let message):
-                throw AuthSwitchPreflightError.transient(email: record.email, message: message)
+            response = try await refreshResponse(refreshToken: refreshToken, email: record.email)
+        } catch let error as AuthSwitchPreflightError {
+            if case .reloginRequired(_, let reason) = error,
+               reason.canAttemptActiveAuthRepair,
+               try await repairFromActiveAuth(
+                   record: record,
+                   staleRefreshToken: refreshToken,
+                   storedAuthURL: storedAuthURL
+               ) {
+                return account
             }
-        } catch {
-            throw AuthSwitchPreflightError.transient(email: record.email, message: error.localizedDescription)
+            throw error
         }
 
-        guard response.hasUsableToken else {
-            throw AuthSwitchPreflightError.invalidRefreshResponse(email: record.email)
-        }
-
-        if let idToken = response.idToken,
-           let tokenIdentity = TokenIdentity(idToken: idToken),
-           tokenIdentity.accountID != record.chatgptAccountID || tokenIdentity.userID != record.chatgptUserID {
-            throw AuthSwitchPreflightError.accountMismatch(email: record.email)
-        }
-
+        try validateRefreshResponse(response, record: record, usedRefreshToken: refreshToken)
         authFile.apply(response: response, lastRefresh: Self.iso8601String(from: now()))
         try authFile.write(to: storedAuthURL)
 
@@ -171,6 +164,61 @@ struct AuthSwitchPreflightValidator {
         }
 
         return account
+    }
+
+    private func refreshResponse(refreshToken: String, email: String) async throws -> OAuthRefreshResponse {
+        do {
+            return try await refresher.refresh(refreshToken: refreshToken)
+        } catch let failure as OAuthRefreshFailure {
+            switch failure {
+            case .reloginRequired(let reason):
+                throw AuthSwitchPreflightError.reloginRequired(email: email, reason: reason)
+            case .transient(let message):
+                throw AuthSwitchPreflightError.transient(email: email, message: message)
+            }
+        } catch {
+            throw AuthSwitchPreflightError.transient(email: email, message: error.localizedDescription)
+        }
+    }
+
+    private func validateRefreshResponse(
+        _ response: OAuthRefreshResponse,
+        record: SwitchAccountRecord,
+        usedRefreshToken: String
+    ) throws {
+        guard let rotatedRefreshToken = response.refreshToken.trimmedNonEmpty,
+              rotatedRefreshToken != usedRefreshToken else {
+            throw AuthSwitchPreflightError.invalidRefreshResponse(email: record.email)
+        }
+
+        if let idToken = response.idToken,
+           let tokenIdentity = TokenIdentity(idToken: idToken),
+           tokenIdentity.accountID != record.chatgptAccountID || tokenIdentity.userID != record.chatgptUserID {
+            throw AuthSwitchPreflightError.accountMismatch(email: record.email)
+        }
+    }
+
+    private func repairFromActiveAuth(
+        record: SwitchAccountRecord,
+        staleRefreshToken: String,
+        storedAuthURL: URL
+    ) async throws -> Bool {
+        let activeURL = activeAuthURL
+        guard fileManager.fileExists(atPath: activeURL.path),
+              var activeAuthFile = try? StoredAuthFile(url: activeURL),
+              activeAuthFile.isAPIKeyAuth == false,
+              activeAuthFile.identityMatches(record: record),
+              let activeRefreshToken = activeAuthFile.refreshToken,
+              activeRefreshToken != staleRefreshToken else {
+            return false
+        }
+
+        let response = try await refreshResponse(refreshToken: activeRefreshToken, email: record.email)
+        try validateRefreshResponse(response, record: record, usedRefreshToken: activeRefreshToken)
+        activeAuthFile.apply(response: response, lastRefresh: Self.iso8601String(from: now()))
+        try activeAuthFile.write(to: activeURL)
+        try activeAuthFile.write(to: storedAuthURL)
+        return true
     }
 
     private var registryURL: URL {
@@ -409,6 +457,14 @@ private struct StoredAuthFile {
         tokens["refresh_token"] as? String
     }
 
+    func identityMatches(record: SwitchAccountRecord) -> Bool {
+        guard let idToken = (tokens["id_token"] as? String).trimmedNonEmpty,
+              let identity = TokenIdentity(idToken: idToken) else {
+            return false
+        }
+        return identity.userID == record.chatgptUserID && identity.accountID == record.chatgptAccountID
+    }
+
     private var tokens: [String: Any] {
         root["tokens"] as? [String: Any] ?? [:]
     }
@@ -480,11 +536,14 @@ private enum JWT {
     }
 }
 
-private extension OAuthRefreshResponse {
-    var hasUsableToken: Bool {
-        idToken.trimmedNonEmpty != nil ||
-        accessToken.trimmedNonEmpty != nil ||
-        refreshToken.trimmedNonEmpty != nil
+private extension OAuthRefreshFailureReason {
+    var canAttemptActiveAuthRepair: Bool {
+        switch self {
+        case .expired, .reused, .revoked:
+            return true
+        case .other:
+            return false
+        }
     }
 }
 

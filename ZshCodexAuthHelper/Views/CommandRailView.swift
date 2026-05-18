@@ -14,7 +14,6 @@ struct CommandRailView: View {
     let requestRemove: () -> Void
 
     private var canImport: Bool {
-        alias.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false &&
         authFilePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
     }
 
@@ -31,18 +30,18 @@ struct CommandRailView: View {
             }
 
             VStack(alignment: .leading, spacing: ThemeTokens.Spacing.normal) {
-                Text("Import")
+                Text("Saved Login")
                     .font(.headline)
                     .foregroundStyle(ThemeTokens.Colors.primaryText)
 
                 VStack(alignment: .leading, spacing: ThemeTokens.Spacing.tight) {
                     AuthSessionIndicatorView(info: authSession)
-                    LabeledTextField(title: "Alias", text: $alias)
+                    LabeledTextField(title: "Alias (optional)", text: $alias)
                     LabeledTextField(title: "Auth file", text: $authFilePath, monospaced: true)
                 }
 
                 CommandButton(
-                    title: "Import Auth",
+                    title: "Save / Update Login",
                     systemImage: "tray.and.arrow.down",
                     tint: ThemeTokens.Colors.accent,
                     action: runImport

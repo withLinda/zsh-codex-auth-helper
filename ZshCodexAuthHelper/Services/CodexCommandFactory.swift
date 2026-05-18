@@ -2,7 +2,6 @@ import Foundation
 
 enum CommandFactoryError: LocalizedError, Equatable {
     case missingExecutable(String)
-    case missingAlias
     case missingAuthFilePath
     case missingSwitchQuery
     case missingRemoveAlias
@@ -11,10 +10,8 @@ enum CommandFactoryError: LocalizedError, Equatable {
         switch self {
         case .missingExecutable(let name):
             return "Could not find \(name)."
-        case .missingAlias:
-            return "Add an alias before importing."
         case .missingAuthFilePath:
-            return "Add an auth file path before importing."
+            return "Add an auth file path before saving."
         case .missingSwitchQuery:
             return "Add an alias after codex-auth switch before running."
         case .missingRemoveAlias:
@@ -68,16 +65,16 @@ struct CodexCommandFactory {
         guard trimmedPath.isEmpty == false else {
             throw CommandFactoryError.missingAuthFilePath
         }
-        guard trimmedAlias.isEmpty == false else {
-            throw CommandFactoryError.missingAlias
-        }
 
         let executable = try codexAuthExecutable()
-        let arguments = ["import", NSString(string: trimmedPath).expandingTildeInPath, "--alias", trimmedAlias]
+        var arguments = ["import", NSString(string: trimmedPath).expandingTildeInPath]
+        if trimmedAlias.isEmpty == false {
+            arguments.append(contentsOf: ["--alias", trimmedAlias])
+        }
 
         return CommandDefinition(
             id: "import",
-            title: "Import Auth",
+            title: "Save / Update Login",
             systemImage: "tray.and.arrow.down",
             executable: executable,
             arguments: arguments,

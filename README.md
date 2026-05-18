@@ -2,7 +2,7 @@
 
 **Codex Auth Helper** is a small macOS app for managing Codex accounts without memorizing `codex-auth` commands.
 
-It gives Codex App users a simple interface for login, import, switch, list, remove, and restart flows, while still showing the real terminal output so you always know what is happening.
+It gives Codex App users a simple interface for login, save/update, switch, list, remove, and restart flows, while still showing the real terminal output so you always know what is happening.
 
 ![Codex Auth Helper app showing account list output](docs/codex-auth-helper-screenshot.png)
 
@@ -10,7 +10,7 @@ It gives Codex App users a simple interface for login, import, switch, list, rem
 
 - Switch Codex accounts faster from a desktop app.
 - Use `codex-auth` without typing the same commands again and again.
-- Import an auth file with a clear alias, such as `main`, `work`, or `personal`.
+- Save or update an auth file. You can add a clear alias, such as `main`, `work`, or `personal`, but the alias is optional when updating an existing account.
 - See command output inside the app, including prompts you may need to answer.
 - Open detected login links from the built-in terminal panel.
 - Restart Codex App after switching so the new account takes effect, with a safer wait before reopening.
@@ -20,7 +20,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 ## Features
 
 - **Login**: runs `codex login --device-auth`.
-- **Import Auth**: imports an auth JSON file and saves it with an alias.
+- **Save / Update Login**: saves an auth JSON file. Leave the alias blank to update an existing saved account without changing its alias.
 - **Switch Account**: prepares `codex-auth switch` so you can type the alias.
 - **List Accounts**: shows accounts managed by `codex-auth`.
 - **Remove Account**: prepares `codex-auth remove` so you can type the alias.
@@ -95,7 +95,7 @@ Then build and run the app from the project folder:
 1. Install `codex-auth`.
 2. Open Codex Auth Helper.
 3. Click **Login** if you need to sign in to Codex.
-4. Use **Import Auth** to save an auth file with an alias. The default path is `~/.codex/auth.json`.
+4. Use **Save / Update Login** to save the auth file. The default path is `~/.codex/auth.json`. Add an alias for a new account, or leave the alias blank to update an existing saved account.
 5. Click **List Accounts** to check saved accounts.
 6. Click **Switch Account**, type the alias in the terminal input, then press Return.
 7. Click **Restart Codex** so Codex App fully exits and reopens with the selected account.

@@ -115,15 +115,20 @@ struct CodexCommandFactoryTests {
         #expect(command.displayCommand.contains("'personal account'"))
     }
 
-    @Test func importAuthRejectsEmptyAlias() {
+    @Test func importAuthOmitsAliasArgumentWhenAliasIsEmpty() throws {
         let factory = CodexCommandFactory(
-            resolver: .init(environmentPath: "", fileExists: { _ in true }),
+            resolver: .init(environmentPath: "/opt/homebrew/bin", fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }),
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        #expect(throws: CommandFactoryError.self) {
-            try factory.importAuth(authFilePath: "/Users/linda/.codex/auth.json", alias: "   ")
-        }
+        let command = try factory.importAuth(authFilePath: "/Users/linda/.codex/auth.json", alias: "   ")
+
+        #expect(command.executable == "/opt/homebrew/bin/codex-auth")
+        #expect(command.arguments == [
+            "import",
+            "/Users/linda/.codex/auth.json"
+        ])
+        #expect(command.displayCommand == "codex-auth import /Users/linda/.codex/auth.json")
     }
 
     @Test func switchAccountPassesQueryAsSeparateArgument() throws {
