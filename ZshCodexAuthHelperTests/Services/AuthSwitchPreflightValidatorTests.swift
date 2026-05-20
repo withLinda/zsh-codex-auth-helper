@@ -405,6 +405,44 @@ struct AuthSwitchPreflightValidatorTests {
         #expect(account.email == "sultan1819@example.com")
         #expect(await refresher.requests == ["refresh-sultan"])
     }
+
+    @Test func heldAccountLockStopsBeforeSwitchAndKeepsStoredAuthUnchanged() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy.ahkusmawati938@gmail.com", alias: "aisy2", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy.ahkusmawati938@gmail.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-aisy"
+        )
+        let lock = AuthAccountFileLock(homeDirectory: fixture.homeDirectory)
+        let heldLock = try #require(try lock.tryLock(accountKey: "user_aisy::acct_aisy"))
+        let refresher = FakeOAuthTokenRefresher(responses: [:])
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            lock: lock,
+            refresher: refresher,
+            now: { Date(timeIntervalSince1970: 1_779_000_000) }
+        )
+
+        do {
+            _ = try await validator.validateAndRefresh(query: "aisy")
+            Issue.record("Expected held account lock to stop the switch.")
+        } catch let error as AuthSwitchPreflightError {
+            #expect(error == .accountBusy(email: "aisy.ahkusmawati938@gmail.com"))
+        }
+
+        #expect(await refresher.requests.isEmpty)
+        let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
+        #expect(auth.tokens.refreshToken == "refresh-aisy")
+        heldLock.release()
+    }
 }
 
 private actor FakeOAuthTokenRefresher: OAuthTokenRefreshing {

@@ -11,9 +11,12 @@
 		1A3983C1117489BFE2D41AB2 /* PTYCommandExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51191B240221F63E26B160D3 /* PTYCommandExecutor.swift */; };
 		23E84AE16A8611D13240BA07 /* PTYCommandExecutorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69A6D62DF58A854CA768102C /* PTYCommandExecutorTests.swift */; };
 		26BDB57560F32C3040FD6DFF /* TerminalTranscriptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5123725734F23144E3F7AC4 /* TerminalTranscriptStore.swift */; };
+		358573D3BE7996F95254C9FC /* AuthAccountFileLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95C8B1D1A8A7F1A5C913337 /* AuthAccountFileLock.swift */; };
+		47A3188952917590B74FE2AF /* AuthAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F85C5B54FF7BF34B491332 /* AuthAccountStore.swift */; };
 		4A069B133E32B97B1F1E63E4 /* AuthSessionReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 983C0CB14AD9D1FE4EBFC8AB /* AuthSessionReaderTests.swift */; };
 		4A7AF25780163109DC31C9E8 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11797A4A989985FF7D0DA970 /* CommandRunner.swift */; };
 		4B4AA638B42AE417A2EE4881 /* ExecutableResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C71FFA15EF5A1825E9E5F6 /* ExecutableResolver.swift */; };
+		4D30836ABB09BF4E5A02C9A2 /* AuthHealthCheckServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F441EA10705746FC336D6D7 /* AuthHealthCheckServiceTests.swift */; };
 		4F5F8B4D080AF2C0DEA9045A /* AuthSwitchPreflightValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79F3891998897211731DE6F /* AuthSwitchPreflightValidatorTests.swift */; };
 		682619D255D79A8BE6F3D7F4 /* AuthSessionReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E2B049F896C1052E012050 /* AuthSessionReader.swift */; };
 		6AFD586C07FCEA659E8F1465 /* CommandDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4602C757D47221DDA6F4665 /* CommandDefinition.swift */; };
@@ -23,6 +26,7 @@
 		858364C05355AD05DC3DEEEB /* AuthSessionMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA5871277FF0640BA51432E /* AuthSessionMonitorTests.swift */; };
 		92649FE29AFC13204B561074 /* ShellQuoting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 661229301A238C2F8486A389 /* ShellQuoting.swift */; };
 		A5422C94EB4448C3DC9CD280 /* TerminalPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A903DED5EF172A22EB2B2721 /* TerminalPanelView.swift */; };
+		A8BE7BF104BEAEF62A8036DD /* AuthHealthCheckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52265B5BBACB465ED203921 /* AuthHealthCheckService.swift */; };
 		B04D8E95CBE60C86C731168F /* ZshCodexAuthHelperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F07B52C7F5A53D4B31AF7D71 /* ZshCodexAuthHelperApp.swift */; };
 		B33535230E58BA682B6CAC45 /* CodexCommandFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D8A3DEDE663F4C10DAA844D /* CodexCommandFactory.swift */; };
 		B84089EF039198981D2277B0 /* CodexCommandFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D175398EB67CF52AA1C2E1B9 /* CodexCommandFactoryTests.swift */; };
@@ -50,11 +54,13 @@
 		1D8A3DEDE663F4C10DAA844D /* CodexCommandFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexCommandFactory.swift; sourceTree = "<group>"; };
 		2DCF119C9C10C7BC8F7D479E /* ZshCodexAuthHelper.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZshCodexAuthHelper.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3D84A27A5ADC9BC7C32ECA23 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		3F441EA10705746FC336D6D7 /* AuthHealthCheckServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthHealthCheckServiceTests.swift; sourceTree = "<group>"; };
 		425954A9418B6292B7958249 /* TerminalTranscriptStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTranscriptStoreTests.swift; sourceTree = "<group>"; };
 		44C71FFA15EF5A1825E9E5F6 /* ExecutableResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutableResolver.swift; sourceTree = "<group>"; };
 		48A4BE28607E03AD431A41D7 /* AuthSwitchPreflightValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSwitchPreflightValidator.swift; sourceTree = "<group>"; };
 		4AA5871277FF0640BA51432E /* AuthSessionMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionMonitorTests.swift; sourceTree = "<group>"; };
 		51191B240221F63E26B160D3 /* PTYCommandExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTYCommandExecutor.swift; sourceTree = "<group>"; };
+		54F85C5B54FF7BF34B491332 /* AuthAccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAccountStore.swift; sourceTree = "<group>"; };
 		5CA51A39A20757B222218C56 /* CodexResourceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexResourceSettingsView.swift; sourceTree = "<group>"; };
 		632A50936F0255589D25B147 /* ExecutableResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutableResolverTests.swift; sourceTree = "<group>"; };
 		661229301A238C2F8486A389 /* ShellQuoting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellQuoting.swift; sourceTree = "<group>"; };
@@ -68,6 +74,8 @@
 		BFFD4891FFB5ABA10E9F4803 /* AuthSessionInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionInfo.swift; sourceTree = "<group>"; };
 		C79F3891998897211731DE6F /* AuthSwitchPreflightValidatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSwitchPreflightValidatorTests.swift; sourceTree = "<group>"; };
 		D175398EB67CF52AA1C2E1B9 /* CodexCommandFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexCommandFactoryTests.swift; sourceTree = "<group>"; };
+		D52265B5BBACB465ED203921 /* AuthHealthCheckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthHealthCheckService.swift; sourceTree = "<group>"; };
+		D95C8B1D1A8A7F1A5C913337 /* AuthAccountFileLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAccountFileLock.swift; sourceTree = "<group>"; };
 		E5123725734F23144E3F7AC4 /* TerminalTranscriptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTranscriptStore.swift; sourceTree = "<group>"; };
 		E7E2B049F896C1052E012050 /* AuthSessionReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionReader.swift; sourceTree = "<group>"; };
 		F07B52C7F5A53D4B31AF7D71 /* ZshCodexAuthHelperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZshCodexAuthHelperApp.swift; sourceTree = "<group>"; };
@@ -108,6 +116,9 @@
 		63B815F98EE2B35656540B1A /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				D95C8B1D1A8A7F1A5C913337 /* AuthAccountFileLock.swift */,
+				54F85C5B54FF7BF34B491332 /* AuthAccountStore.swift */,
+				D52265B5BBACB465ED203921 /* AuthHealthCheckService.swift */,
 				E7E2B049F896C1052E012050 /* AuthSessionReader.swift */,
 				48A4BE28607E03AD431A41D7 /* AuthSwitchPreflightValidator.swift */,
 				1D8A3DEDE663F4C10DAA844D /* CodexCommandFactory.swift */,
@@ -120,6 +131,7 @@
 		7FDF3DAB196F7C599405B2BD /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				3F441EA10705746FC336D6D7 /* AuthHealthCheckServiceTests.swift */,
 				983C0CB14AD9D1FE4EBFC8AB /* AuthSessionReaderTests.swift */,
 				C79F3891998897211731DE6F /* AuthSwitchPreflightValidatorTests.swift */,
 				D175398EB67CF52AA1C2E1B9 /* CodexCommandFactoryTests.swift */,
@@ -276,6 +288,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4D30836ABB09BF4E5A02C9A2 /* AuthHealthCheckServiceTests.swift in Sources */,
 				858364C05355AD05DC3DEEEB /* AuthSessionMonitorTests.swift in Sources */,
 				4A069B133E32B97B1F1E63E4 /* AuthSessionReaderTests.swift in Sources */,
 				4F5F8B4D080AF2C0DEA9045A /* AuthSwitchPreflightValidatorTests.swift in Sources */,
@@ -290,6 +303,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				358573D3BE7996F95254C9FC /* AuthAccountFileLock.swift in Sources */,
+				47A3188952917590B74FE2AF /* AuthAccountStore.swift in Sources */,
+				A8BE7BF104BEAEF62A8036DD /* AuthHealthCheckService.swift in Sources */,
 				0F8ABC5C6989F6938B7C2AC8 /* AuthSessionInfo.swift in Sources */,
 				F1AA5F3E82D8639A1374F0A9 /* AuthSessionMonitor.swift in Sources */,
 				682619D255D79A8BE6F3D7F4 /* AuthSessionReader.swift in Sources */,

@@ -56,6 +56,7 @@ enum AuthSwitchPreflightError: LocalizedError, Equatable {
     case missingRegistry
     case missingStoredAuth(email: String)
     case missingRefreshToken(email: String)
+    case accountBusy(email: String)
     case reloginRequired(email: String, reason: OAuthRefreshFailureReason)
     case accountMismatch(email: String)
     case invalidRefreshResponse(email: String)
@@ -73,6 +74,8 @@ enum AuthSwitchPreflightError: LocalizedError, Equatable {
             return "Saved auth file for \(email) was not found. Log in again, then Save / Update Login. Alias is optional for existing accounts."
         case .missingRefreshToken(let email):
             return "Saved login for \(email) has no refresh token. Log in again, then Save / Update Login. Alias is optional for existing accounts."
+        case .accountBusy(let email):
+            return "Saved login for \(email) is already being checked. Try again after the current refresh finishes."
         case .reloginRequired(let email, let reason):
             return "Saved login for \(email) cannot refresh because its refresh token was \(reason.displayName). Log in again, then Save / Update Login before switching. Alias is optional for existing accounts."
         case .accountMismatch(let email):
@@ -95,19 +98,22 @@ struct AuthSwitchPreflightAccount: Equatable, Sendable {
 }
 
 struct AuthSwitchPreflightValidator {
-    private let homeDirectory: URL
+    private let store: AuthAccountStore
     private let fileManager: FileManager
+    private let lock: AuthAccountFileLock
     private let refresher: OAuthTokenRefreshing
     private let now: @Sendable () -> Date
 
     init(
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         fileManager: FileManager = .default,
+        lock: AuthAccountFileLock? = nil,
         refresher: OAuthTokenRefreshing = URLSessionOAuthTokenRefresher(),
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
-        self.homeDirectory = homeDirectory
+        self.store = AuthAccountStore(homeDirectory: homeDirectory, fileManager: fileManager)
         self.fileManager = fileManager
+        self.lock = lock ?? AuthAccountFileLock(homeDirectory: homeDirectory, fileManager: fileManager)
         self.refresher = refresher
         self.now = now
     }
@@ -121,10 +127,17 @@ struct AuthSwitchPreflightValidator {
             email: record.email,
             alias: record.alias.trimmedNonEmpty
         )
-        let storedAuthURL = accountAuthURL(accountKey: record.accountKey)
+        let storedAuthURL = store.existingAccountAuthURL(accountKey: record.accountKey)
 
         guard fileManager.fileExists(atPath: storedAuthURL.path) else {
             throw AuthSwitchPreflightError.missingStoredAuth(email: record.email)
+        }
+
+        guard let heldLock = try lock.tryLock(accountKey: record.accountKey) else {
+            throw AuthSwitchPreflightError.accountBusy(email: record.email)
+        }
+        defer {
+            heldLock.release()
         }
 
         var authFile = try StoredAuthFile(url: storedAuthURL)
@@ -157,7 +170,7 @@ struct AuthSwitchPreflightValidator {
         try authFile.write(to: storedAuthURL)
 
         if registry.activeAccountKey == record.accountKey {
-            let activeURL = activeAuthURL
+            let activeURL = store.activeAuthURL
             if fileManager.fileExists(atPath: activeURL.deletingLastPathComponent().path) {
                 try authFile.write(to: activeURL)
             }
@@ -183,27 +196,24 @@ struct AuthSwitchPreflightValidator {
 
     private func validateRefreshResponse(
         _ response: OAuthRefreshResponse,
-        record: SwitchAccountRecord,
+        record: AuthAccountRecord,
         usedRefreshToken: String
     ) throws {
-        guard let rotatedRefreshToken = response.refreshToken.trimmedNonEmpty,
-              rotatedRefreshToken != usedRefreshToken else {
+        do {
+            try AuthRefreshResponseValidator.validate(response, record: record, usedRefreshToken: usedRefreshToken)
+        } catch AuthRefreshValidationError.invalidRefreshResponse {
             throw AuthSwitchPreflightError.invalidRefreshResponse(email: record.email)
-        }
-
-        if let idToken = response.idToken,
-           let tokenIdentity = TokenIdentity(idToken: idToken),
-           tokenIdentity.accountID != record.chatgptAccountID || tokenIdentity.userID != record.chatgptUserID {
+        } catch AuthRefreshValidationError.accountMismatch {
             throw AuthSwitchPreflightError.accountMismatch(email: record.email)
         }
     }
 
     private func repairFromActiveAuth(
-        record: SwitchAccountRecord,
+        record: AuthAccountRecord,
         staleRefreshToken: String,
         storedAuthURL: URL
     ) async throws -> Bool {
-        let activeURL = activeAuthURL
+        let activeURL = store.activeAuthURL
         guard fileManager.fileExists(atPath: activeURL.path),
               var activeAuthFile = try? StoredAuthFile(url: activeURL),
               activeAuthFile.isAPIKeyAuth == false,
@@ -221,35 +231,19 @@ struct AuthSwitchPreflightValidator {
         return true
     }
 
-    private var registryURL: URL {
-        homeDirectory.appendingPathComponent(".codex/accounts/registry.json")
-    }
-
-    private var activeAuthURL: URL {
-        homeDirectory.appendingPathComponent(".codex/auth.json")
-    }
-
-    private func accountAuthURL(accountKey: String) -> URL {
-        homeDirectory
-            .appendingPathComponent(".codex/accounts")
-            .appendingPathComponent("\(Self.encodedAccountKey(accountKey)).auth.json")
-    }
-
-    private func readRegistry() throws -> SwitchRegistry {
-        guard fileManager.fileExists(atPath: registryURL.path) else {
-            throw AuthSwitchPreflightError.missingRegistry
-        }
-
+    private func readRegistry() throws -> AuthAccountRegistry {
         do {
-            return try JSONDecoder().decode(SwitchRegistry.self, from: Data(contentsOf: registryURL))
+            return try store.readRegistry()
+        } catch AuthAccountStoreError.missingRegistry {
+            throw AuthSwitchPreflightError.missingRegistry
         } catch {
             throw AuthSwitchPreflightError.transient(email: nil, message: "Registry could not be read.")
         }
     }
 
-    private func resolveAccount(query: String, registry: SwitchRegistry) throws -> SwitchAccountRecord {
+    private func resolveAccount(query: String, registry: AuthAccountRegistry) throws -> AuthAccountRecord {
         if let displayNumber = Int(query), displayNumber > 0 {
-            let ordered = displayOrderedAccounts(registry: registry)
+            let ordered = registry.displayOrderedAccounts()
             if displayNumber <= ordered.count {
                 return ordered[displayNumber - 1]
             }
@@ -268,51 +262,6 @@ struct AuthSwitchPreflightValidator {
             throw AuthSwitchPreflightError.ambiguousAccount(query: query)
         }
         return matches[0]
-    }
-
-    private func displayOrderedAccounts(registry: SwitchRegistry) -> [SwitchAccountRecord] {
-        registry.accounts.sorted { lhs, rhs in
-            if lhs.email != rhs.email {
-                return lhs.email < rhs.email
-            }
-
-            let lhsActive = registry.activeAccountKey == lhs.accountKey
-            let rhsActive = registry.activeAccountKey == rhs.accountKey
-            if lhsActive != rhsActive {
-                return lhsActive
-            }
-
-            let lhsRank = planSortRank(lhs.displayPlan)
-            let rhsRank = planSortRank(rhs.displayPlan)
-            if lhsRank != rhsRank {
-                return lhsRank < rhsRank
-            }
-
-            if lhs.displayPlan != rhs.displayPlan {
-                return lhs.displayPlan < rhs.displayPlan
-            }
-
-            return lhs.accountKey < rhs.accountKey
-        }
-    }
-
-    private func planSortRank(_ plan: String) -> Int {
-        switch plan {
-        case "team", "business", "enterprise", "edu":
-            return 0
-        case "free", "plus", "prolite", "pro":
-            return 1
-        default:
-            return 2
-        }
-    }
-
-    private static func encodedAccountKey(_ accountKey: String) -> String {
-        Data(accountKey.utf8)
-            .base64EncodedString()
-            .replacingOccurrences(of: "+", with: "-")
-            .replacingOccurrences(of: "/", with: "_")
-            .replacingOccurrences(of: "=", with: "")
     }
 
     private static func iso8601String(from date: Date) -> String {
@@ -384,158 +333,6 @@ struct URLSessionOAuthTokenRefresher: OAuthTokenRefreshing {
     }
 }
 
-private struct SwitchRegistry: Decodable {
-    var activeAccountKey: String?
-    var accounts: [SwitchAccountRecord]
-
-    enum CodingKeys: String, CodingKey {
-        case activeAccountKey = "active_account_key"
-        case accounts
-    }
-}
-
-private struct SwitchAccountRecord: Decodable {
-    var accountKey: String
-    var chatgptAccountID: String
-    var chatgptUserID: String
-    var email: String
-    var alias: String
-    var accountName: String?
-    var plan: String?
-    var authMode: String?
-
-    enum CodingKeys: String, CodingKey {
-        case accountKey = "account_key"
-        case chatgptAccountID = "chatgpt_account_id"
-        case chatgptUserID = "chatgpt_user_id"
-        case email
-        case alias
-        case accountName = "account_name"
-        case plan
-        case authMode = "auth_mode"
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        accountKey = try container.decode(String.self, forKey: .accountKey)
-        chatgptAccountID = try container.decode(String.self, forKey: .chatgptAccountID)
-        chatgptUserID = try container.decode(String.self, forKey: .chatgptUserID)
-        email = try container.decode(String.self, forKey: .email)
-        alias = try container.decodeIfPresent(String.self, forKey: .alias) ?? ""
-        accountName = try container.decodeIfPresent(String.self, forKey: .accountName)
-        plan = try container.decodeIfPresent(String.self, forKey: .plan)
-        authMode = try container.decodeIfPresent(String.self, forKey: .authMode)
-    }
-
-    var displayPlan: String {
-        if authMode?.lowercased() == "apikey" {
-            return "API_KEY"
-        }
-        return plan?
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
-            .replacingOccurrences(of: "-", with: "_") ?? "-"
-    }
-}
-
-private struct StoredAuthFile {
-    private var root: [String: Any]
-
-    init(url: URL) throws {
-        let data = try Data(contentsOf: url)
-        guard let object = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            throw AuthSwitchPreflightError.transient(email: nil, message: "Auth file is not a JSON object.")
-        }
-        root = object
-    }
-
-    var isAPIKeyAuth: Bool {
-        (root["OPENAI_API_KEY"] as? String).trimmedNonEmpty != nil
-    }
-
-    var refreshToken: String? {
-        tokens["refresh_token"] as? String
-    }
-
-    func identityMatches(record: SwitchAccountRecord) -> Bool {
-        guard let idToken = (tokens["id_token"] as? String).trimmedNonEmpty,
-              let identity = TokenIdentity(idToken: idToken) else {
-            return false
-        }
-        return identity.userID == record.chatgptUserID && identity.accountID == record.chatgptAccountID
-    }
-
-    private var tokens: [String: Any] {
-        root["tokens"] as? [String: Any] ?? [:]
-    }
-
-    mutating func apply(response: OAuthRefreshResponse, lastRefresh: String) {
-        var updatedTokens = tokens
-        if let idToken = response.idToken.trimmedNonEmpty {
-            updatedTokens["id_token"] = idToken
-            if let identity = TokenIdentity(idToken: idToken) {
-                updatedTokens["account_id"] = identity.accountID
-            }
-        }
-        if let accessToken = response.accessToken.trimmedNonEmpty {
-            updatedTokens["access_token"] = accessToken
-        }
-        if let refreshToken = response.refreshToken.trimmedNonEmpty {
-            updatedTokens["refresh_token"] = refreshToken
-        }
-        root["tokens"] = updatedTokens
-        root["last_refresh"] = lastRefresh
-    }
-
-    func write(to url: URL) throws {
-        let directory = url.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let data = try JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys])
-        try data.write(to: url, options: .atomic)
-        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
-    }
-}
-
-private struct TokenIdentity {
-    var userID: String
-    var accountID: String
-
-    init?(idToken: String) {
-        guard let payload = JWT.payload(from: idToken),
-              let authClaims = payload["https://api.openai.com/auth"] as? [String: Any],
-              let userID = ((authClaims["chatgpt_user_id"] as? String) ?? (authClaims["user_id"] as? String)).trimmedNonEmpty,
-              let accountID = (authClaims["chatgpt_account_id"] as? String).trimmedNonEmpty else {
-            return nil
-        }
-        self.userID = userID
-        self.accountID = accountID
-    }
-}
-
-private enum JWT {
-    static func payload(from token: String) -> [String: Any]? {
-        let parts = token.split(separator: ".")
-        guard parts.count >= 2,
-              let data = base64URLData(String(parts[1])),
-              let object = try? JSONSerialization.jsonObject(with: data),
-              let payload = object as? [String: Any] else {
-            return nil
-        }
-        return payload
-    }
-
-    private static func base64URLData(_ value: String) -> Data? {
-        var base64 = value
-            .replacingOccurrences(of: "-", with: "+")
-            .replacingOccurrences(of: "_", with: "/")
-        let remainder = base64.count % 4
-        if remainder > 0 {
-            base64 += String(repeating: "=", count: 4 - remainder)
-        }
-        return Data(base64Encoded: base64)
-    }
-}
-
 private extension OAuthRefreshFailureReason {
     var canAttemptActiveAuthRepair: Bool {
         switch self {
@@ -544,18 +341,5 @@ private extension OAuthRefreshFailureReason {
         case .other:
             return false
         }
-    }
-}
-
-private extension String {
-    var trimmedNonEmpty: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
-    }
-}
-
-private extension Optional where Wrapped == String {
-    var trimmedNonEmpty: String? {
-        self?.trimmedNonEmpty
     }
 }

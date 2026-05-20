@@ -23,6 +23,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Save / Update Login**: saves an auth JSON file. Leave the alias blank to update an existing saved account without changing its alias.
 - **Switch Account**: prepares `codex-auth switch` so you can type the alias.
 - **List Accounts**: shows accounts managed by `codex-auth`.
+- **Health Check**: manually refreshes saved ChatGPT accounts whose last refresh is older than 24 hours, one account at a time.
 - **Remove Account**: prepares `codex-auth remove` so you can type the alias.
 - **Restart Codex**: quits Codex App, waits for its helper processes to exit, and then reopens it after account changes.
 - **Interactive terminal**: send input to running commands from the app.
@@ -97,8 +98,11 @@ Then build and run the app from the project folder:
 3. Click **Login** if you need to sign in to Codex.
 4. Use **Save / Update Login** to save the auth file. The default path is `~/.codex/auth.json`. Add an alias for a new account, or leave the alias blank to update an existing saved account.
 5. Click **List Accounts** to check saved accounts.
-6. Click **Switch Account**, type the alias in the terminal input, then press Return.
-7. Click **Restart Codex** so Codex App fully exits and reopens with the selected account.
+6. Click **Health Check** when you want to refresh saved ChatGPT logins that have not been refreshed in the last 24 hours. It skips recent accounts and API-key accounts, refreshes one account at a time, and writes each new refresh token immediately.
+7. Click **Switch Account**, type the alias in the terminal input, then press Return.
+8. Click **Restart Codex** so Codex App fully exits and reopens with the selected account.
+
+Health Check helps reduce local stale-token problems. It cannot prevent OpenAI from expiring or revoking a token, or from asking you to verify your login again. If an account needs login again, use **Login**, then **Save / Update Login**.
 
 If Codex App is not installed at `/Applications/Codex.app`, open **Codex Auth Helper > Settings** and update the Codex resources path. The default is `/Applications/Codex.app/Contents/Resources`.
 

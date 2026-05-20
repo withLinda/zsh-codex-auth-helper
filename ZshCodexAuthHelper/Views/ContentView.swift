@@ -9,23 +9,27 @@ struct ContentView: View {
 
     private let commandFactory: CodexCommandFactory
     private let switchPreflightValidator: AuthSwitchPreflightValidator
+    private let healthCheckService: AuthHealthCheckService
 
     @State private var authFilePath: String
     @State private var alias: String
     @State private var terminalInput = ""
     @State private var terminalInputFocusRequest = 0
     @State private var isCheckingSwitch = false
+    @State private var isRunningHealthCheck = false
 
     private var isBusy: Bool {
-        runner.isRunning || isCheckingSwitch
+        runner.isRunning || isCheckingSwitch || isRunningHealthCheck
     }
 
     init(
         commandFactory: CodexCommandFactory = .live(),
-        switchPreflightValidator: AuthSwitchPreflightValidator = AuthSwitchPreflightValidator()
+        switchPreflightValidator: AuthSwitchPreflightValidator = AuthSwitchPreflightValidator(),
+        healthCheckService: AuthHealthCheckService = AuthHealthCheckService()
     ) {
         self.commandFactory = commandFactory
         self.switchPreflightValidator = switchPreflightValidator
+        self.healthCheckService = healthCheckService
         _authFilePath = State(initialValue: commandFactory.defaultAuthFilePath)
         _alias = State(initialValue: "main")
     }
@@ -42,6 +46,7 @@ struct ContentView: View {
                 runSwitch: prepareSwitchDraft,
                 runRestart: { run(commandFactory.restartCodex(codexResourceDirectory: codexResourceDirectory)) },
                 runList: { runFactoryCommand(commandFactory.list) },
+                runHealthCheck: runHealthCheck,
                 requestRemove: prepareRemoveDraft
             )
             .frame(minWidth: 320, idealWidth: 360, maxWidth: 400)
@@ -141,6 +146,22 @@ struct ContentView: View {
         } catch {
             isCheckingSwitch = false
             transcriptStore.appendSystemLine(error.localizedDescription)
+        }
+    }
+
+    private func runHealthCheck() {
+        guard isBusy == false else {
+            transcriptStore.appendSystemLine("A command is already running. Stop it before starting another one.")
+            return
+        }
+
+        isRunningHealthCheck = true
+        Task {
+            _ = await healthCheckService.run { event in
+                transcriptStore.appendSystemLine(event.transcriptLine)
+            }
+            isRunningHealthCheck = false
+            authSessionMonitor.refreshCurrent()
         }
     }
 }

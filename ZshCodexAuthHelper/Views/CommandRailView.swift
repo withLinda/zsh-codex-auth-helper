@@ -11,6 +11,7 @@ struct CommandRailView: View {
     let runSwitch: () -> Void
     let runRestart: () -> Void
     let runList: () -> Void
+    let runHealthCheck: () -> Void
     let requestRemove: () -> Void
 
     private var canImport: Bool {
@@ -58,6 +59,7 @@ struct CommandRailView: View {
                 CommandButton(title: "Switch Account...", systemImage: "arrow.triangle.2.circlepath", action: runSwitch)
                 CommandButton(title: "Restart Codex", systemImage: "power", tint: ThemeTokens.Colors.warning, action: runRestart)
                 CommandButton(title: "List Accounts", systemImage: "list.bullet.rectangle", action: runList)
+                CommandButton(title: "Health Check", systemImage: "checkmark.shield", tint: ThemeTokens.Colors.success, action: runHealthCheck)
             }
             .disabled(isRunning)
 
