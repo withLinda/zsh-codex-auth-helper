@@ -51,9 +51,11 @@ npm install -g @loongphy/codex-auth
 
 For most users, this is the easiest way to install the app. You do not need Xcode.
 
-Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then download the DMG file from **Assets**:
+Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the file that ends in `.dmg`:
 
 - `CodexAuthHelper-v...dmg`
+
+Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
@@ -69,7 +71,8 @@ Then install it:
 
 1. Open the downloaded `.dmg` file.
 2. Drag `ZshCodexAuthHelper.app` to the `Applications` shortcut in the DMG window.
-3. Open `Codex Auth Helper` from `Applications`.
+3. If Finder asks whether to replace an older copy, choose **Replace**.
+4. Open `Codex Auth Helper` from `Applications`.
 
 The release is unsigned. On first launch, macOS may show a warning. If that happens, right-click `Codex Auth Helper`, choose **Open**, then choose **Open** again.
 
