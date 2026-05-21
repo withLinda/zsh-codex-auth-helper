@@ -78,6 +78,35 @@ struct AuthHealthCheckServiceTests {
         #expect(await refresher.requests.isEmpty)
     }
 
+    @Test func fractionalLastRefreshWithinTwentyFourHoursIsSkipped() async throws {
+        let fixture = try AuthHealthCheckFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-aisy",
+            lastRefresh: "2026-05-17T05:45:00.123456Z"
+        )
+        let refresher = HealthCheckFakeOAuthTokenRefresher(responses: [:])
+        let service = AuthHealthCheckService(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+
+        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+
+        #expect(summary.results.map(\.status) == [.skippedRecent])
+        #expect(await refresher.requests.isEmpty)
+    }
+
     @Test func missingLastRefreshIsTreatedAsStale() async throws {
         let fixture = try AuthHealthCheckFixture()
         try fixture.writeRegistry(

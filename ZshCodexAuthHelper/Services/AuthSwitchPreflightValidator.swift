@@ -98,10 +98,13 @@ struct AuthSwitchPreflightAccount: Equatable, Sendable {
 }
 
 struct AuthSwitchPreflightValidator {
+    private static let defaultRecentRefreshSkipInterval: TimeInterval = 30 * 60
+
     private let store: AuthAccountStore
     private let fileManager: FileManager
     private let lock: AuthAccountFileLock
     private let refresher: OAuthTokenRefreshing
+    private let recentRefreshSkipInterval: TimeInterval
     private let now: @Sendable () -> Date
 
     init(
@@ -109,12 +112,14 @@ struct AuthSwitchPreflightValidator {
         fileManager: FileManager = .default,
         lock: AuthAccountFileLock? = nil,
         refresher: OAuthTokenRefreshing = URLSessionOAuthTokenRefresher(),
+        recentRefreshSkipInterval: TimeInterval = Self.defaultRecentRefreshSkipInterval,
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = AuthAccountStore(homeDirectory: homeDirectory, fileManager: fileManager)
         self.fileManager = fileManager
         self.lock = lock ?? AuthAccountFileLock(homeDirectory: homeDirectory, fileManager: fileManager)
         self.refresher = refresher
+        self.recentRefreshSkipInterval = recentRefreshSkipInterval
         self.now = now
     }
 
@@ -140,13 +145,18 @@ struct AuthSwitchPreflightValidator {
             heldLock.release()
         }
 
-        var authFile = try StoredAuthFile(url: storedAuthURL)
+        let selectedAuth = try freshestAuthFile(record: record, storedAuthURL: storedAuthURL)
+        var authFile = selectedAuth.authFile
         guard authFile.isAPIKeyAuth == false else {
             return account
         }
 
         guard let refreshToken = authFile.refreshToken else {
             throw AuthSwitchPreflightError.missingRefreshToken(email: record.email)
+        }
+
+        if isRecentRefresh(selectedAuth.freshnessDate) {
+            return account
         }
 
         let response: OAuthRefreshResponse
@@ -169,7 +179,7 @@ struct AuthSwitchPreflightValidator {
         authFile.apply(response: response, lastRefresh: Self.iso8601String(from: now()))
         try authFile.write(to: storedAuthURL)
 
-        if registry.activeAccountKey == record.accountKey {
+        if registry.activeAccountKey == record.accountKey || selectedAuth.source == .active {
             let activeURL = store.activeAuthURL
             if fileManager.fileExists(atPath: activeURL.deletingLastPathComponent().path) {
                 try authFile.write(to: activeURL)
@@ -177,6 +187,57 @@ struct AuthSwitchPreflightValidator {
         }
 
         return account
+    }
+
+    private func freshestAuthFile(
+        record: AuthAccountRecord,
+        storedAuthURL: URL
+    ) throws -> AuthFileSelection {
+        let storedAuthFile = try StoredAuthFile(url: storedAuthURL)
+        let storedSelection = AuthFileSelection(
+            source: .stored,
+            authFile: storedAuthFile,
+            freshnessDate: freshnessDate(for: storedAuthFile, url: storedAuthURL)
+        )
+        guard storedAuthFile.isAPIKeyAuth == false else {
+            return storedSelection
+        }
+
+        let activeURL = store.activeAuthURL
+        guard fileManager.fileExists(atPath: activeURL.path),
+              let activeAuthFile = try? StoredAuthFile(url: activeURL),
+              activeAuthFile.isAPIKeyAuth == false,
+              activeAuthFile.identityMatches(record: record),
+              activeAuthFile.refreshToken != nil else {
+            return storedSelection
+        }
+
+        let activeSelection = AuthFileSelection(
+            source: .active,
+            authFile: activeAuthFile,
+            freshnessDate: freshnessDate(for: activeAuthFile, url: activeURL)
+        )
+        guard activeSelection.isNewer(than: storedSelection) else {
+            return storedSelection
+        }
+
+        try activeAuthFile.write(to: storedAuthURL)
+        return activeSelection
+    }
+
+    private func freshnessDate(for authFile: StoredAuthFile, url: URL) -> Date? {
+        authFile.lastRefreshDate ?? fileModificationDate(url)
+    }
+
+    private func fileModificationDate(_ url: URL) -> Date? {
+        (try? fileManager.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
+    }
+
+    private func isRecentRefresh(_ date: Date?) -> Bool {
+        guard let date else {
+            return false
+        }
+        return now().timeIntervalSince(date) < recentRefreshSkipInterval
     }
 
     private func refreshResponse(refreshToken: String, email: String) async throws -> OAuthRefreshResponse {
@@ -341,5 +402,26 @@ private extension OAuthRefreshFailureReason {
         case .other:
             return false
         }
+    }
+}
+
+private enum AuthFileSource {
+    case stored
+    case active
+}
+
+private struct AuthFileSelection {
+    var source: AuthFileSource
+    var authFile: StoredAuthFile
+    var freshnessDate: Date?
+
+    func isNewer(than other: AuthFileSelection) -> Bool {
+        guard let freshnessDate else {
+            return false
+        }
+        guard let otherFreshnessDate = other.freshnessDate else {
+            return true
+        }
+        return freshnessDate > otherFreshnessDate
     }
 }

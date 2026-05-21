@@ -255,7 +255,7 @@ struct StoredAuthFile {
         guard let value = (root["last_refresh"] as? String).trimmedNonEmpty else {
             return nil
         }
-        return Self.iso8601Formatter.date(from: value)
+        return Self.iso8601Formatter.date(from: value) ?? Self.fractionalISO8601Formatter.date(from: value)
     }
 
     func identityMatches(record: AuthAccountRecord) -> Bool {
@@ -299,6 +299,13 @@ struct StoredAuthFile {
     private static let iso8601Formatter: ISO8601DateFormatter = {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
+        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        return formatter
+    }()
+
+    private static let fractionalISO8601Formatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
