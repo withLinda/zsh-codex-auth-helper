@@ -25,7 +25,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.linda.zsh-codexauth-helper
         PRODUCT_NAME: ZshCodexAuthHelper
         MARKETING_VERSION: "2026.05.21"
-        CURRENT_PROJECT_VERSION: 1
+        CURRENT_PROJECT_VERSION: 2
         INFOPLIST_KEY_CFBundleDisplayName: Codex Auth Helper
         INFOPLIST_KEY_CFBundleName: Codex Auth Helper
         INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
