@@ -55,6 +55,7 @@ struct ContentView: View {
                 runRestart: runRestartCodex,
                 runOpenCodex: runOpenCodex,
                 runForceCloseCodex: runForceCloseCodex,
+                runOpenBlankIncognito: openBlankIncognito,
                 runList: { runFactoryCommand(commandFactory.list) },
                 runHealthCheck: runHealthCheck,
                 requestRemove: prepareRemoveDraft
@@ -134,6 +135,14 @@ struct ContentView: View {
     private func openLoginURL(_ url: URL) {
         do {
             try linkOpener.open(url)
+        } catch {
+            transcriptStore.appendSystemLine(error.localizedDescription)
+        }
+    }
+
+    private func openBlankIncognito() {
+        do {
+            try linkOpener.openBlankWindow()
         } catch {
             transcriptStore.appendSystemLine(error.localizedDescription)
         }

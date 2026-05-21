@@ -48,6 +48,14 @@ struct ChromeIncognitoLinkOpener {
             throw ChromeIncognitoLinkOpenerError.unsupportedURLScheme(url.scheme)
         }
 
+        try openChrome(arguments: ["--incognito", url.absoluteString])
+    }
+
+    func openBlankWindow() throws {
+        try openChrome(arguments: ["--incognito"])
+    }
+
+    private func openChrome(arguments: [String]) throws {
         guard let chromeAppURL = applicationURLForBundleIdentifier(Self.chromeBundleIdentifier) else {
             throw ChromeIncognitoLinkOpenerError.chromeNotFound
         }
@@ -58,7 +66,7 @@ struct ChromeIncognitoLinkOpener {
         }
 
         do {
-            try launch(executableURL, ["--incognito", url.absoluteString])
+            try launch(executableURL, arguments)
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             throw ChromeIncognitoLinkOpenerError.launchFailed(message)

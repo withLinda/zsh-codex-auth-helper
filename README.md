@@ -22,6 +22,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Login**: runs `codex login --device-auth`, then saves the login automatically with the full email as the alias when the email can be read.
 - **Save / Update Login**: saves an auth JSON file. Leave the alias blank to update an existing saved account without changing its alias.
 - **Switch Account**: prepares `codex-auth switch` so you can type the alias.
+- **Open Blank Incognito**: opens a blank Chrome Incognito window from the sidebar, using your normal Chrome profile so Chrome can still offer saved passwords and passkeys.
 - **List Accounts**: shows accounts managed by `codex-auth`.
 - **Health Check**: checks every saved ChatGPT OAuth account one at a time, refreshes valid tokens, and ends with sorted account summaries.
 - **Remove Account**: prepares `codex-auth remove` so you can type the alias.
@@ -54,13 +55,13 @@ For most users, this is the easiest way to install the app. You do not need Xcod
 
 Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the DMG file:
 
-- `CodexAuthHelper-v2026.05.21.3.dmg`
+- `CodexAuthHelper-v2026.05.21.4.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.05.21.3.dmg.sha256`
+- `CodexAuthHelper-v2026.05.21.4.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
@@ -126,6 +127,7 @@ Use this flow the first time:
 ### Command Buttons
 
 - **Login** runs `codex login --device-auth`. It signs in through the browser, then tries to save the finished login automatically. If the app cannot read an email from the auth file, save it manually with **Save / Update Login**.
+- **Open Blank Incognito** opens a blank Chrome Incognito window. It uses the same Chrome profile as your normal Chrome app, so saved passwords and passkeys can still be offered by Chrome.
 - **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching. If more than one account matches, use a more specific value.
 - **Restart Codex** quits Codex App, waits for its helper processes to exit, and opens it again. Use this after switching accounts. A simple way to think about it: switching changes the key on disk, and restarting makes Codex pick up the new key.
 - **Open Codex** appears when Codex App is closed. It opens Codex without changing accounts.

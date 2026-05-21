@@ -33,6 +33,29 @@ struct ChromeIncognitoLinkOpenerTests {
         ])
     }
 
+    @Test func opensBlankWindowWithDefaultChromeProfileIncognitoArguments() throws {
+        let chromeAppURL = URL(fileURLWithPath: "/Applications/Google Chrome.app")
+        var launchedExecutableURL: URL?
+        var launchedArguments: [String] = []
+        let opener = ChromeIncognitoLinkOpener(
+            applicationURLForBundleIdentifier: { _ in chromeAppURL },
+            fileExists: { path in
+                path == "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+            },
+            launch: { executableURL, arguments in
+                launchedExecutableURL = executableURL
+                launchedArguments = arguments
+            }
+        )
+
+        try opener.openBlankWindow()
+
+        #expect(launchedExecutableURL?.path == "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome")
+        #expect(launchedArguments == ["--incognito"])
+        #expect(launchedArguments.contains { $0.hasPrefix("--user-data-dir") } == false)
+        #expect(launchedArguments.contains("--guest") == false)
+    }
+
     @Test func opensHTTPSAndHTTPURLsOnly() throws {
         let opener = ChromeIncognitoLinkOpener(
             applicationURLForBundleIdentifier: { _ in URL(fileURLWithPath: "/Applications/Google Chrome.app") },

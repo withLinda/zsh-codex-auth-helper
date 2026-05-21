@@ -13,6 +13,7 @@ struct CommandRailView: View {
     let runRestart: () -> Void
     let runOpenCodex: () -> Void
     let runForceCloseCodex: () -> Void
+    let runOpenBlankIncognito: () -> Void
     let runList: () -> Void
     let runHealthCheck: () -> Void
     let requestRemove: () -> Void
@@ -51,6 +52,21 @@ struct CommandRailView: View {
                     action: runImport
                 )
                 .disabled(isRunning || canImport == false)
+            }
+
+            VStack(alignment: .leading, spacing: ThemeTokens.Spacing.normal) {
+                Text("Browser")
+                    .font(.headline)
+                    .foregroundStyle(ThemeTokens.Colors.primaryText)
+
+                CommandButton(
+                    title: "Open Blank Incognito",
+                    systemImage: "eye.slash",
+                    tint: ThemeTokens.Colors.accent,
+                    action: runOpenBlankIncognito
+                )
+                .help("Open a blank Chrome Incognito window with your normal Chrome profile")
+                .accessibilityLabel("Open blank Chrome Incognito window")
             }
 
             VStack(alignment: .leading, spacing: ThemeTokens.Spacing.normal) {
