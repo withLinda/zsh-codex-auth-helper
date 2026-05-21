@@ -84,6 +84,17 @@ final class TerminalTranscriptStore: ObservableObject {
     }
 }
 
+enum TerminalTranscriptAccountTone: Equatable {
+    case success
+    case warning
+    case destructive
+}
+
+struct TerminalTranscriptAccountHighlight: Equatable {
+    var range: Range<String.Index>
+    var tone: TerminalTranscriptAccountTone
+}
+
 enum TerminalTranscriptParser {
     static func clean(_ text: String) -> String {
         text
@@ -111,5 +122,80 @@ enum TerminalTranscriptParser {
             .last
             .flatMap { Range($0.range, in: text) }
             .map { String(text[$0]) }
+    }
+
+    static func accountHighlights(in text: String) -> [TerminalTranscriptAccountHighlight] {
+        var highlights: [TerminalTranscriptAccountHighlight] = []
+        var lineStart = text.startIndex
+
+        while lineStart < text.endIndex {
+            let lineEnd = text[lineStart...].firstIndex(of: "\n") ?? text.endIndex
+
+            if let highlight = accountHighlight(in: text, lineStart: lineStart, lineEnd: lineEnd) {
+                highlights.append(highlight)
+            }
+
+            guard lineEnd < text.endIndex else {
+                break
+            }
+
+            lineStart = text.index(after: lineEnd)
+        }
+
+        return highlights
+    }
+
+    private static func accountHighlight(
+        in text: String,
+        lineStart: String.Index,
+        lineEnd: String.Index
+    ) -> TerminalTranscriptAccountHighlight? {
+        guard let colon = text[lineStart..<lineEnd].firstIndex(of: ":") else {
+            return nil
+        }
+
+        let emailRange = lineStart..<colon
+        let email = String(text[emailRange])
+        guard email.isEmpty == false,
+              email.contains("@"),
+              email.rangeOfCharacter(from: .whitespacesAndNewlines) == nil else {
+            return nil
+        }
+
+        let afterColon = text.index(after: colon)
+        guard afterColon < lineEnd, text[afterColon] == " " else {
+            return nil
+        }
+
+        let statusStart = text.index(after: afterColon)
+        let status = String(text[statusStart..<lineEnd])
+        guard let tone = accountTone(for: status) else {
+            return nil
+        }
+
+        return TerminalTranscriptAccountHighlight(range: emailRange, tone: tone)
+    }
+
+    private static func accountTone(for status: String) -> TerminalTranscriptAccountTone? {
+        guard isHealthCheckResultStatus(status) else {
+            return nil
+        }
+
+        if status.contains("refresh token was revoked") {
+            return .destructive
+        }
+
+        if status.contains("refresh token was already used") {
+            return .warning
+        }
+
+        return .success
+    }
+
+    private static func isHealthCheckResultStatus(_ status: String) -> Bool {
+        status == "refreshed"
+            || status.hasPrefix("skipped; ")
+            || status.hasPrefix("needs login; ")
+            || status.hasPrefix("failed; ")
     }
 }

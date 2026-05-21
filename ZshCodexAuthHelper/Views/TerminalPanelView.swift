@@ -99,9 +99,7 @@ struct TerminalPanelView: View {
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(terminalOutputText)
-                        .font(.system(.callout, design: .monospaced))
-                        .foregroundStyle(store.transcript.isEmpty ? ThemeTokens.Colors.mutedText : ThemeTokens.Colors.primaryText)
+                    Text(terminalOutputAttributedText)
                         .textSelection(.enabled)
                         .frame(maxWidth: .infinity, alignment: .topLeading)
                         .padding(ThemeTokens.Spacing.group)
@@ -122,6 +120,31 @@ struct TerminalPanelView: View {
 
     private var terminalOutputText: String {
         store.displayTranscript.isEmpty ? "Output will appear here." : store.displayTranscript
+    }
+
+    private var terminalOutputAttributedText: AttributedString {
+        let text = terminalOutputText
+        var output = AttributedString(text)
+        output.font = .system(.callout, design: .monospaced)
+        output.foregroundColor = store.displayTranscript.isEmpty
+            ? ThemeTokens.Colors.mutedText
+            : ThemeTokens.Colors.primaryText
+
+        guard store.displayTranscript.isEmpty == false else {
+            return output
+        }
+
+        for highlight in TerminalTranscriptParser.accountHighlights(in: text) {
+            guard let lowerBound = AttributedString.Index(highlight.range.lowerBound, within: output),
+                  let upperBound = AttributedString.Index(highlight.range.upperBound, within: output) else {
+                continue
+            }
+
+            output[lowerBound..<upperBound].foregroundColor = highlight.tone.terminalColor
+            output[lowerBound..<upperBound].font = .system(.callout, design: .monospaced).weight(.semibold)
+        }
+
+        return output
     }
 
     private var inputBar: some View {
@@ -243,6 +266,19 @@ private struct ToolbarButtonStyle: ButtonStyle {
             .frame(minHeight: 34)
             .background(tint.opacity(configuration.isPressed ? 0.28 : 0.16))
             .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous))
+    }
+}
+
+private extension TerminalTranscriptAccountTone {
+    var terminalColor: Color {
+        switch self {
+        case .success:
+            return ThemeTokens.Colors.success
+        case .warning:
+            return ThemeTokens.Colors.warning
+        case .destructive:
+            return ThemeTokens.Colors.destructive
+        }
     }
 }
 

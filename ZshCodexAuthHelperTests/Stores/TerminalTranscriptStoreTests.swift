@@ -94,4 +94,51 @@ struct TerminalTranscriptStoreTests {
         #expect(store.detectedURLs.isEmpty)
         #expect(store.latestDeviceCode == nil)
     }
+
+    @Test func healthCheckAccountHighlightsUseTokenStatusColors() {
+        let transcript = """
+        Checking used@example.com...
+        used@example.com: needs login; refresh token was already used
+        revoked@example.com: needs login; refresh token was revoked
+        fresh@example.com: refreshed
+        recent@example.com: skipped; checked within the last 24 hours
+        Health Check finished: 1 refreshed, 1 skipped, 2 need attention.
+        """
+
+        let highlights = TerminalTranscriptParser.accountHighlights(in: transcript)
+
+        #expect(highlightedAccounts(in: transcript, highlights: highlights) == [
+            HighlightedAccount(email: "used@example.com", tone: .warning),
+            HighlightedAccount(email: "revoked@example.com", tone: .destructive),
+            HighlightedAccount(email: "fresh@example.com", tone: .success),
+            HighlightedAccount(email: "recent@example.com", tone: .success)
+        ])
+    }
+
+    @Test func accountHighlightsIgnoreNonResultHealthCheckLines() {
+        let transcript = """
+        Health Check started for 2 saved accounts. Stale age: 24 hours.
+        Checking used@example.com...
+        Health Check finished: 0 refreshed, 0 skipped, 0 need attention.
+        """
+
+        #expect(TerminalTranscriptParser.accountHighlights(in: transcript).isEmpty)
+    }
+}
+
+private struct HighlightedAccount: Equatable {
+    var email: String
+    var tone: TerminalTranscriptAccountTone
+}
+
+private func highlightedAccounts(
+    in transcript: String,
+    highlights: [TerminalTranscriptAccountHighlight]
+) -> [HighlightedAccount] {
+    highlights.map { highlight in
+        HighlightedAccount(
+            email: String(transcript[highlight.range]),
+            tone: highlight.tone
+        )
+    }
 }
