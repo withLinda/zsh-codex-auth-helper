@@ -5,11 +5,14 @@ struct CommandRailView: View {
     @Binding var authFilePath: String
 
     let authSession: AuthSessionInfo
+    let codexAppState: CodexAppState
     let isRunning: Bool
     let runLogin: () -> Void
     let runImport: () -> Void
     let runSwitch: () -> Void
     let runRestart: () -> Void
+    let runOpenCodex: () -> Void
+    let runForceCloseCodex: () -> Void
     let runList: () -> Void
     let runHealthCheck: () -> Void
     let requestRemove: () -> Void
@@ -58,6 +61,7 @@ struct CommandRailView: View {
                 CommandButton(title: "Login", systemImage: "person.crop.circle.badge.plus", action: runLogin)
                 CommandButton(title: "Switch Account...", systemImage: "arrow.triangle.2.circlepath", action: runSwitch)
                 CommandButton(title: "Restart Codex", systemImage: "power", tint: ThemeTokens.Colors.warning, action: runRestart)
+                codexAppControlButton
                 CommandButton(title: "List Accounts", systemImage: "list.bullet.rectangle", action: runList)
                 CommandButton(title: "Health Check", systemImage: "checkmark.shield", tint: ThemeTokens.Colors.success, action: runHealthCheck)
             }
@@ -85,6 +89,26 @@ struct CommandRailView: View {
             Rectangle()
                 .fill(ThemeTokens.Colors.border)
                 .frame(width: 1)
+        }
+    }
+
+    @ViewBuilder
+    private var codexAppControlButton: some View {
+        switch codexAppState {
+        case .open:
+            CommandButton(
+                title: "Force Close Codex",
+                systemImage: "xmark.circle",
+                tint: ThemeTokens.Colors.destructive,
+                action: runForceCloseCodex
+            )
+        case .closed:
+            CommandButton(
+                title: "Open Codex",
+                systemImage: "arrow.up.forward.app",
+                tint: ThemeTokens.Colors.info,
+                action: runOpenCodex
+            )
         }
     }
 }

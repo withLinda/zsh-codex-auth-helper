@@ -349,4 +349,46 @@ struct CodexCommandFactoryTests {
         #expect(script.contains("app_bundle=/Users/linda/Apps/Codex.app"))
         #expect(script.contains(#"process_marker="${app_bundle}/Contents/""#))
     }
+
+    @Test func openCodexOpensConfiguredAppBundleAndFallsBackToBundleIdentifier() throws {
+        let factory = CodexCommandFactory(
+            resolver: .init(environmentPath: "", fileExists: { _ in false }),
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = factory.openCodex(
+            codexResourceDirectory: "/Users/linda/My Apps/Codex.app/Contents/Resources"
+        )
+        let script = try #require(command.arguments.last)
+
+        #expect(command.id == "open-codex")
+        #expect(command.title == "Open Codex")
+        #expect(command.arguments.first == "-lc")
+        #expect(script.contains("app_bundle='/Users/linda/My Apps/Codex.app'"))
+        #expect(script.contains(#"/usr/bin/open "$app_bundle""#))
+        #expect(script.contains(#"/usr/bin/open -b "$bundle_id""#))
+        #expect(command.displayCommand == "open '/Users/linda/My Apps/Codex.app'")
+    }
+
+    @Test func forceCloseCodexTerminatesConfiguredCodexProcessesWithoutReopening() throws {
+        let factory = CodexCommandFactory(
+            resolver: .init(environmentPath: "", fileExists: { _ in false }),
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = factory.forceCloseCodex(
+            codexResourceDirectory: "/Users/linda/My Apps/Codex.app/Contents/Resources"
+        )
+        let script = try #require(command.arguments.last)
+
+        #expect(command.id == "force-close-codex")
+        #expect(command.title == "Force Close Codex")
+        #expect(command.risk == .destructive)
+        #expect(script.contains("app_bundle='/Users/linda/My Apps/Codex.app'"))
+        #expect(script.contains(#"process_marker="${app_bundle}/Contents/""#))
+        #expect(script.contains("signalCodex TERM"))
+        #expect(script.contains("signalCodex KILL"))
+        #expect(script.contains("/usr/bin/open") == false)
+        #expect(command.displayCommand == "force close Codex at '/Users/linda/My Apps/Codex.app'")
+    }
 }

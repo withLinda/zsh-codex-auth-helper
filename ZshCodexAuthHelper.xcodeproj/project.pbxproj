@@ -13,27 +13,34 @@
 		26BDB57560F32C3040FD6DFF /* TerminalTranscriptStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5123725734F23144E3F7AC4 /* TerminalTranscriptStore.swift */; };
 		358573D3BE7996F95254C9FC /* AuthAccountFileLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95C8B1D1A8A7F1A5C913337 /* AuthAccountFileLock.swift */; };
 		47A3188952917590B74FE2AF /* AuthAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F85C5B54FF7BF34B491332 /* AuthAccountStore.swift */; };
+		48929FC5DB13FCE63B275E60 /* CodexAppMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46118D9621C050FB38DA5A83 /* CodexAppMonitor.swift */; };
 		4A069B133E32B97B1F1E63E4 /* AuthSessionReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 983C0CB14AD9D1FE4EBFC8AB /* AuthSessionReaderTests.swift */; };
 		4A7AF25780163109DC31C9E8 /* CommandRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11797A4A989985FF7D0DA970 /* CommandRunner.swift */; };
 		4B4AA638B42AE417A2EE4881 /* ExecutableResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44C71FFA15EF5A1825E9E5F6 /* ExecutableResolver.swift */; };
 		4D30836ABB09BF4E5A02C9A2 /* AuthHealthCheckServiceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F441EA10705746FC336D6D7 /* AuthHealthCheckServiceTests.swift */; };
 		4F5F8B4D080AF2C0DEA9045A /* AuthSwitchPreflightValidatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C79F3891998897211731DE6F /* AuthSwitchPreflightValidatorTests.swift */; };
+		501488DA054B84997F3E79C7 /* LoginAutoSavePlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5996B33F90B627D1FB0FB9C9 /* LoginAutoSavePlanner.swift */; };
 		682619D255D79A8BE6F3D7F4 /* AuthSessionReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7E2B049F896C1052E012050 /* AuthSessionReader.swift */; };
 		6AFD586C07FCEA659E8F1465 /* CommandDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4602C757D47221DDA6F4665 /* CommandDefinition.swift */; };
 		6B3607C672A93BB35C7CC80A /* ExecutableResolverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 632A50936F0255589D25B147 /* ExecutableResolverTests.swift */; };
 		73E0E557AE4C4776C928C27C /* CommandRailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F2A55C3D82B11F0E16C4FC /* CommandRailView.swift */; };
 		7C791EC191CD4935F2F57B0A /* CodexResourceSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CA51A39A20757B222218C56 /* CodexResourceSettingsView.swift */; };
+		7DB03476D0E32763A2613FD5 /* ChromeIncognitoLinkOpenerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC8E15CD7BC605180F5D4EA4 /* ChromeIncognitoLinkOpenerTests.swift */; };
 		858364C05355AD05DC3DEEEB /* AuthSessionMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AA5871277FF0640BA51432E /* AuthSessionMonitorTests.swift */; };
 		92649FE29AFC13204B561074 /* ShellQuoting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 661229301A238C2F8486A389 /* ShellQuoting.swift */; };
+		93BBDE5D46B4331DBB3C7192 /* CommandRunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78CEF686BDC6EE3749638A9E /* CommandRunnerTests.swift */; };
+		A0E1FBDE14EE0CE3CCE7C836 /* ChromeIncognitoLinkOpener.swift in Sources */ = {isa = PBXBuildFile; fileRef = 878A6987A9FAF357EDDFF905 /* ChromeIncognitoLinkOpener.swift */; };
 		A5422C94EB4448C3DC9CD280 /* TerminalPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A903DED5EF172A22EB2B2721 /* TerminalPanelView.swift */; };
 		A8BE7BF104BEAEF62A8036DD /* AuthHealthCheckService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D52265B5BBACB465ED203921 /* AuthHealthCheckService.swift */; };
 		B04D8E95CBE60C86C731168F /* ZshCodexAuthHelperApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F07B52C7F5A53D4B31AF7D71 /* ZshCodexAuthHelperApp.swift */; };
 		B33535230E58BA682B6CAC45 /* CodexCommandFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D8A3DEDE663F4C10DAA844D /* CodexCommandFactory.swift */; };
+		B52693A49C8822FEC79CBDE7 /* LoginAutoSavePlannerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A07927C9980815E256583CBB /* LoginAutoSavePlannerTests.swift */; };
 		B84089EF039198981D2277B0 /* CodexCommandFactoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D175398EB67CF52AA1C2E1B9 /* CodexCommandFactoryTests.swift */; };
 		B8EBB0C7B4201D791288BAAB /* ThemeTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = A59C1EF5C362597F8F7BB050 /* ThemeTokens.swift */; };
 		BB889AB23526CF4728458294 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D84A27A5ADC9BC7C32ECA23 /* ContentView.swift */; };
 		CF7CAB37E94246911A8ACFD8 /* CodexResourceSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A66138C049E9A700DDAE935 /* CodexResourceSettings.swift */; };
 		DA78DEBDE7FB8B0461FB9F05 /* AuthSwitchPreflightValidator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48A4BE28607E03AD431A41D7 /* AuthSwitchPreflightValidator.swift */; };
+		EDA7E2A1E91B15ADD64E49FA /* CodexAppMonitorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 525F9F28F4DBBCCE09DC6149 /* CodexAppMonitorTests.swift */; };
 		F1AA5F3E82D8639A1374F0A9 /* AuthSessionMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A107D2BD05678005E4D48D02 /* AuthSessionMonitor.swift */; };
 		F5D94A09F5A570B7224B24EB /* TerminalTranscriptStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425954A9418B6292B7958249 /* TerminalTranscriptStoreTests.swift */; };
 /* End PBXBuildFile section */
@@ -57,16 +64,22 @@
 		3F441EA10705746FC336D6D7 /* AuthHealthCheckServiceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthHealthCheckServiceTests.swift; sourceTree = "<group>"; };
 		425954A9418B6292B7958249 /* TerminalTranscriptStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTranscriptStoreTests.swift; sourceTree = "<group>"; };
 		44C71FFA15EF5A1825E9E5F6 /* ExecutableResolver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutableResolver.swift; sourceTree = "<group>"; };
+		46118D9621C050FB38DA5A83 /* CodexAppMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppMonitor.swift; sourceTree = "<group>"; };
 		48A4BE28607E03AD431A41D7 /* AuthSwitchPreflightValidator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSwitchPreflightValidator.swift; sourceTree = "<group>"; };
 		4AA5871277FF0640BA51432E /* AuthSessionMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionMonitorTests.swift; sourceTree = "<group>"; };
 		51191B240221F63E26B160D3 /* PTYCommandExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTYCommandExecutor.swift; sourceTree = "<group>"; };
+		525F9F28F4DBBCCE09DC6149 /* CodexAppMonitorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexAppMonitorTests.swift; sourceTree = "<group>"; };
 		54F85C5B54FF7BF34B491332 /* AuthAccountStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAccountStore.swift; sourceTree = "<group>"; };
+		5996B33F90B627D1FB0FB9C9 /* LoginAutoSavePlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginAutoSavePlanner.swift; sourceTree = "<group>"; };
 		5CA51A39A20757B222218C56 /* CodexResourceSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexResourceSettingsView.swift; sourceTree = "<group>"; };
 		632A50936F0255589D25B147 /* ExecutableResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutableResolverTests.swift; sourceTree = "<group>"; };
 		661229301A238C2F8486A389 /* ShellQuoting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellQuoting.swift; sourceTree = "<group>"; };
 		69A6D62DF58A854CA768102C /* PTYCommandExecutorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTYCommandExecutorTests.swift; sourceTree = "<group>"; };
+		78CEF686BDC6EE3749638A9E /* CommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRunnerTests.swift; sourceTree = "<group>"; };
 		7A66138C049E9A700DDAE935 /* CodexResourceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexResourceSettings.swift; sourceTree = "<group>"; };
+		878A6987A9FAF357EDDFF905 /* ChromeIncognitoLinkOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeIncognitoLinkOpener.swift; sourceTree = "<group>"; };
 		983C0CB14AD9D1FE4EBFC8AB /* AuthSessionReaderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionReaderTests.swift; sourceTree = "<group>"; };
+		A07927C9980815E256583CBB /* LoginAutoSavePlannerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginAutoSavePlannerTests.swift; sourceTree = "<group>"; };
 		A107D2BD05678005E4D48D02 /* AuthSessionMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionMonitor.swift; sourceTree = "<group>"; };
 		A59C1EF5C362597F8F7BB050 /* ThemeTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTokens.swift; sourceTree = "<group>"; };
 		A903DED5EF172A22EB2B2721 /* TerminalPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalPanelView.swift; sourceTree = "<group>"; };
@@ -76,6 +89,7 @@
 		D175398EB67CF52AA1C2E1B9 /* CodexCommandFactoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexCommandFactoryTests.swift; sourceTree = "<group>"; };
 		D52265B5BBACB465ED203921 /* AuthHealthCheckService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthHealthCheckService.swift; sourceTree = "<group>"; };
 		D95C8B1D1A8A7F1A5C913337 /* AuthAccountFileLock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAccountFileLock.swift; sourceTree = "<group>"; };
+		DC8E15CD7BC605180F5D4EA4 /* ChromeIncognitoLinkOpenerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeIncognitoLinkOpenerTests.swift; sourceTree = "<group>"; };
 		E5123725734F23144E3F7AC4 /* TerminalTranscriptStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalTranscriptStore.swift; sourceTree = "<group>"; };
 		E7E2B049F896C1052E012050 /* AuthSessionReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthSessionReader.swift; sourceTree = "<group>"; };
 		F07B52C7F5A53D4B31AF7D71 /* ZshCodexAuthHelperApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZshCodexAuthHelperApp.swift; sourceTree = "<group>"; };
@@ -96,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				A107D2BD05678005E4D48D02 /* AuthSessionMonitor.swift */,
+				46118D9621C050FB38DA5A83 /* CodexAppMonitor.swift */,
 				11797A4A989985FF7D0DA970 /* CommandRunner.swift */,
 				E5123725734F23144E3F7AC4 /* TerminalTranscriptStore.swift */,
 			);
@@ -121,8 +136,10 @@
 				D52265B5BBACB465ED203921 /* AuthHealthCheckService.swift */,
 				E7E2B049F896C1052E012050 /* AuthSessionReader.swift */,
 				48A4BE28607E03AD431A41D7 /* AuthSwitchPreflightValidator.swift */,
+				878A6987A9FAF357EDDFF905 /* ChromeIncognitoLinkOpener.swift */,
 				1D8A3DEDE663F4C10DAA844D /* CodexCommandFactory.swift */,
 				44C71FFA15EF5A1825E9E5F6 /* ExecutableResolver.swift */,
+				5996B33F90B627D1FB0FB9C9 /* LoginAutoSavePlanner.swift */,
 				51191B240221F63E26B160D3 /* PTYCommandExecutor.swift */,
 			);
 			path = Services;
@@ -134,8 +151,10 @@
 				3F441EA10705746FC336D6D7 /* AuthHealthCheckServiceTests.swift */,
 				983C0CB14AD9D1FE4EBFC8AB /* AuthSessionReaderTests.swift */,
 				C79F3891998897211731DE6F /* AuthSwitchPreflightValidatorTests.swift */,
+				DC8E15CD7BC605180F5D4EA4 /* ChromeIncognitoLinkOpenerTests.swift */,
 				D175398EB67CF52AA1C2E1B9 /* CodexCommandFactoryTests.swift */,
 				632A50936F0255589D25B147 /* ExecutableResolverTests.swift */,
+				A07927C9980815E256583CBB /* LoginAutoSavePlannerTests.swift */,
 				69A6D62DF58A854CA768102C /* PTYCommandExecutorTests.swift */,
 			);
 			path = Services;
@@ -154,6 +173,8 @@
 			isa = PBXGroup;
 			children = (
 				4AA5871277FF0640BA51432E /* AuthSessionMonitorTests.swift */,
+				525F9F28F4DBBCCE09DC6149 /* CodexAppMonitorTests.swift */,
+				78CEF686BDC6EE3749638A9E /* CommandRunnerTests.swift */,
 				425954A9418B6292B7958249 /* TerminalTranscriptStoreTests.swift */,
 			);
 			path = Stores;
@@ -292,8 +313,12 @@
 				858364C05355AD05DC3DEEEB /* AuthSessionMonitorTests.swift in Sources */,
 				4A069B133E32B97B1F1E63E4 /* AuthSessionReaderTests.swift in Sources */,
 				4F5F8B4D080AF2C0DEA9045A /* AuthSwitchPreflightValidatorTests.swift in Sources */,
+				7DB03476D0E32763A2613FD5 /* ChromeIncognitoLinkOpenerTests.swift in Sources */,
+				EDA7E2A1E91B15ADD64E49FA /* CodexAppMonitorTests.swift in Sources */,
 				B84089EF039198981D2277B0 /* CodexCommandFactoryTests.swift in Sources */,
+				93BBDE5D46B4331DBB3C7192 /* CommandRunnerTests.swift in Sources */,
 				6B3607C672A93BB35C7CC80A /* ExecutableResolverTests.swift in Sources */,
+				B52693A49C8822FEC79CBDE7 /* LoginAutoSavePlannerTests.swift in Sources */,
 				23E84AE16A8611D13240BA07 /* PTYCommandExecutorTests.swift in Sources */,
 				F5D94A09F5A570B7224B24EB /* TerminalTranscriptStoreTests.swift in Sources */,
 			);
@@ -310,6 +335,8 @@
 				F1AA5F3E82D8639A1374F0A9 /* AuthSessionMonitor.swift in Sources */,
 				682619D255D79A8BE6F3D7F4 /* AuthSessionReader.swift in Sources */,
 				DA78DEBDE7FB8B0461FB9F05 /* AuthSwitchPreflightValidator.swift in Sources */,
+				A0E1FBDE14EE0CE3CCE7C836 /* ChromeIncognitoLinkOpener.swift in Sources */,
+				48929FC5DB13FCE63B275E60 /* CodexAppMonitor.swift in Sources */,
 				B33535230E58BA682B6CAC45 /* CodexCommandFactory.swift in Sources */,
 				CF7CAB37E94246911A8ACFD8 /* CodexResourceSettings.swift in Sources */,
 				7C791EC191CD4935F2F57B0A /* CodexResourceSettingsView.swift in Sources */,
@@ -318,6 +345,7 @@
 				4A7AF25780163109DC31C9E8 /* CommandRunner.swift in Sources */,
 				BB889AB23526CF4728458294 /* ContentView.swift in Sources */,
 				4B4AA638B42AE417A2EE4881 /* ExecutableResolver.swift in Sources */,
+				501488DA054B84997F3E79C7 /* LoginAutoSavePlanner.swift in Sources */,
 				1A3983C1117489BFE2D41AB2 /* PTYCommandExecutor.swift in Sources */,
 				92649FE29AFC13204B561074 /* ShellQuoting.swift in Sources */,
 				A5422C94EB4448C3DC9CD280 /* TerminalPanelView.swift in Sources */,
@@ -344,7 +372,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -390,7 +418,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGNING_ALLOWED = NO;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				ENABLE_HARDENED_RUNTIME = NO;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;

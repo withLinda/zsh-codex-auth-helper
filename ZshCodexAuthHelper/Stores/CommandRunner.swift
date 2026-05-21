@@ -11,7 +11,11 @@ final class CommandRunner: ObservableObject {
         self.executor = executor
     }
 
-    func start(_ command: CommandDefinition, transcriptStore: TerminalTranscriptStore) {
+    func start(
+        _ command: CommandDefinition,
+        transcriptStore: TerminalTranscriptStore,
+        onFinish: ((PTYCommandResult) -> Void)? = nil
+    ) {
         guard isRunning == false else {
             transcriptStore.appendSystemLine("A command is already running. Stop it before starting another one.")
             return
@@ -33,6 +37,7 @@ final class CommandRunner: ObservableObject {
                         transcriptStore.finish(result)
                         self?.runningCommand = nil
                         self?.isRunning = false
+                        onFinish?(result)
                     }
                 }
             )
@@ -54,4 +59,3 @@ final class CommandRunner: ObservableObject {
         runningCommand?.terminate()
     }
 }
-

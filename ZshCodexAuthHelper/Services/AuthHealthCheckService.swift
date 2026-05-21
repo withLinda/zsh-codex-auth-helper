@@ -2,7 +2,6 @@ import Foundation
 
 enum AuthHealthCheckStatus: Equatable, Sendable {
     case refreshed
-    case skippedRecent
     case skippedAPIKey
     case missingStoredAuth
     case missingRefreshToken
@@ -14,10 +13,19 @@ enum AuthHealthCheckStatus: Equatable, Sendable {
 
     var isFailure: Bool {
         switch self {
-        case .refreshed, .skippedRecent, .skippedAPIKey:
+        case .refreshed, .skippedAPIKey:
             return false
         case .missingStoredAuth, .missingRefreshToken, .busy, .reloginRequired, .accountMismatch, .invalidRefreshResponse, .transient:
             return true
+        }
+    }
+
+    var isSkipped: Bool {
+        switch self {
+        case .skippedAPIKey:
+            return true
+        default:
+            return false
         }
     }
 }
@@ -43,7 +51,7 @@ struct AuthHealthCheckSummary: Equatable, Sendable {
     var skipped: Int {
         results.filter { result in
             switch result.status {
-            case .skippedRecent, .skippedAPIKey:
+            case .skippedAPIKey:
                 return true
             default:
                 return false
@@ -56,12 +64,40 @@ struct AuthHealthCheckSummary: Equatable, Sendable {
     }
 
     var transcriptSummaryLine: String {
-        "Health Check finished: \(refreshed) refreshed, \(skipped) skipped, \(failed) need attention."
+        """
+        Health Check finished: \(refreshed) refreshed, \(skipped) skipped, \(failed) need attention.
+
+        Need attention:
+        \(Self.listLines(for: emails { $0.status.isFailure }))
+
+        Refreshed:
+        \(Self.listLines(for: emails { $0.status == .refreshed }))
+
+        Skipped:
+        \(Self.listLines(for: emails { $0.status.isSkipped }))
+        """
+    }
+
+    private func emails(matching predicate: (AuthHealthCheckAccountResult) -> Bool) -> [String] {
+        results
+            .filter(predicate)
+            .map(\.email)
+            .sorted { lhs, rhs in
+                lhs.localizedCaseInsensitiveCompare(rhs) == .orderedAscending
+            }
+    }
+
+    private static func listLines(for emails: [String]) -> String {
+        guard emails.isEmpty == false else {
+            return "- None"
+        }
+
+        return emails.map { "- \($0)" }.joined(separator: "\n")
     }
 }
 
 enum AuthHealthCheckEvent: Sendable {
-    case started(total: Int, staleAfter: TimeInterval)
+    case started(total: Int)
     case checking(email: String)
     case result(AuthHealthCheckAccountResult)
     case failed(message: String)
@@ -69,9 +105,8 @@ enum AuthHealthCheckEvent: Sendable {
 
     var transcriptLine: String {
         switch self {
-        case .started(let total, let staleAfter):
-            let hours = Int(staleAfter / 3600)
-            return "Health Check started for \(total) saved account\(total == 1 ? "" : "s"). Stale age: \(hours) hours."
+        case .started(let total):
+            return "Health Check started for \(total) saved account\(total == 1 ? "" : "s")."
         case .checking(let email):
             return "Checking \(email)..."
         case .result(let result):
@@ -85,8 +120,6 @@ enum AuthHealthCheckEvent: Sendable {
 }
 
 struct AuthHealthCheckService {
-    static let defaultStaleAfter: TimeInterval = 24 * 60 * 60
-
     private let store: AuthAccountStore
     private let fileManager: FileManager
     private let lock: AuthAccountFileLock
@@ -108,7 +141,6 @@ struct AuthHealthCheckService {
     }
 
     func run(
-        staleAfter: TimeInterval = Self.defaultStaleAfter,
         onProgress: @escaping @MainActor (AuthHealthCheckEvent) -> Void
     ) async -> AuthHealthCheckSummary {
         let registry: AuthAccountRegistry
@@ -123,12 +155,12 @@ struct AuthHealthCheckService {
         }
 
         let accounts = registry.displayOrderedAccounts()
-        await emit(.started(total: accounts.count, staleAfter: staleAfter), onProgress: onProgress)
+        await emit(.started(total: accounts.count), onProgress: onProgress)
 
         var results: [AuthHealthCheckAccountResult] = []
         for record in accounts {
             await emit(.checking(email: record.email), onProgress: onProgress)
-            let result = await check(record: record, registry: registry, staleAfter: staleAfter)
+            let result = await check(record: record, registry: registry)
             results.append(result)
             await emit(.result(result), onProgress: onProgress)
         }
@@ -140,8 +172,7 @@ struct AuthHealthCheckService {
 
     private func check(
         record: AuthAccountRecord,
-        registry: AuthAccountRegistry,
-        staleAfter: TimeInterval
+        registry: AuthAccountRegistry
     ) async -> AuthHealthCheckAccountResult {
         if record.isAPIKeyAccount {
             return result(record: record, status: .skippedAPIKey)
@@ -174,11 +205,6 @@ struct AuthHealthCheckService {
 
         if authFile.isAPIKeyAuth {
             return result(record: record, status: .skippedAPIKey)
-        }
-
-        if let lastRefreshDate = authFile.lastRefreshDate,
-           now().timeIntervalSince(lastRefreshDate) < staleAfter {
-            return result(record: record, status: .skippedRecent)
         }
 
         guard let refreshToken = authFile.refreshToken else {
@@ -257,8 +283,6 @@ private extension AuthHealthCheckStatus {
         switch self {
         case .refreshed:
             return "refreshed"
-        case .skippedRecent:
-            return "skipped; checked within the last 24 hours"
         case .skippedAPIKey:
             return "skipped; API key auth does not use a refresh token"
         case .missingStoredAuth:

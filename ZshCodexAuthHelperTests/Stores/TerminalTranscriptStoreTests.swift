@@ -101,7 +101,7 @@ struct TerminalTranscriptStoreTests {
         used@example.com: needs login; refresh token was already used
         revoked@example.com: needs login; refresh token was revoked
         fresh@example.com: refreshed
-        recent@example.com: skipped; checked within the last 24 hours
+        api@example.com: skipped; API key auth does not use a refresh token
         Health Check finished: 1 refreshed, 1 skipped, 2 need attention.
         """
 
@@ -111,18 +111,62 @@ struct TerminalTranscriptStoreTests {
             HighlightedAccount(email: "used@example.com", tone: .warning),
             HighlightedAccount(email: "revoked@example.com", tone: .destructive),
             HighlightedAccount(email: "fresh@example.com", tone: .success),
-            HighlightedAccount(email: "recent@example.com", tone: .success)
+            HighlightedAccount(email: "api@example.com", tone: .success)
         ])
     }
 
     @Test func accountHighlightsIgnoreNonResultHealthCheckLines() {
         let transcript = """
-        Health Check started for 2 saved accounts. Stale age: 24 hours.
+        Health Check started for 2 saved accounts.
         Checking used@example.com...
         Health Check finished: 0 refreshed, 0 skipped, 0 need attention.
         """
 
         #expect(TerminalTranscriptParser.accountHighlights(in: transcript).isEmpty)
+    }
+
+    @Test func healthCheckFinishedEventShowsSortedCategorySummaries() {
+        let summary = AuthHealthCheckSummary(
+            results: [
+                .init(accountKey: "z", email: "zeta@example.com", alias: nil, status: .reloginRequired(.revoked)),
+                .init(accountKey: "b", email: "beta@example.com", alias: nil, status: .refreshed),
+                .init(accountKey: "a", email: "alpha@example.com", alias: nil, status: .skippedAPIKey),
+                .init(accountKey: "g", email: "gamma@example.com", alias: nil, status: .missingRefreshToken),
+                .init(accountKey: "a2", email: "aisy@example.com", alias: nil, status: .refreshed)
+            ]
+        )
+
+        #expect(summary.transcriptSummaryLine == """
+        Health Check finished: 2 refreshed, 1 skipped, 2 need attention.
+
+        Need attention:
+        - gamma@example.com
+        - zeta@example.com
+
+        Refreshed:
+        - aisy@example.com
+        - beta@example.com
+
+        Skipped:
+        - alpha@example.com
+        """)
+    }
+
+    @Test func healthCheckFinishedEventShowsNoneForEmptyCategories() {
+        let summary = AuthHealthCheckSummary(results: [])
+
+        #expect(summary.transcriptSummaryLine == """
+        Health Check finished: 0 refreshed, 0 skipped, 0 need attention.
+
+        Need attention:
+        - None
+
+        Refreshed:
+        - None
+
+        Skipped:
+        - None
+        """)
     }
 }
 

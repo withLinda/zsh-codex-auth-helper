@@ -3,7 +3,6 @@ import Testing
 @testable import ZshCodexAuthHelper
 
 struct AuthHealthCheckServiceTests {
-    private let oneDay: TimeInterval = 24 * 60 * 60
     private let now = Date(timeIntervalSince1970: 1_779_000_000)
 
     @Test func staleAccountRefreshesAndWritesRotatedToken() async throws {
@@ -37,7 +36,7 @@ struct AuthHealthCheckServiceTests {
             now: { now }
         )
 
-        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        let summary = await service.run(onProgress: { _ in })
 
         #expect(summary.refreshed == 1)
         #expect(summary.results.map(\.status) == [.refreshed])
@@ -48,7 +47,7 @@ struct AuthHealthCheckServiceTests {
         #expect(auth.lastRefresh == "2026-05-17T06:40:00Z")
     }
 
-    @Test func accountRefreshedWithinTwentyFourHoursIsSkipped() async throws {
+    @Test func accountRefreshedWithinTwentyFourHoursIsStillCheckedAndRefreshed() async throws {
         let fixture = try AuthHealthCheckFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -64,21 +63,32 @@ struct AuthHealthCheckServiceTests {
             refreshToken: "refresh-aisy",
             lastRefresh: "2026-05-17T05:45:00Z"
         )
-        let refresher = HealthCheckFakeOAuthTokenRefresher(responses: [:])
+        let refresher = HealthCheckFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .success(.init(
+                    idToken: AuthHealthCheckFixture.jwt(email: "aisy@example.com", userID: "user_aisy", accountID: "acct_aisy"),
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
         let service = AuthHealthCheckService(
             homeDirectory: fixture.homeDirectory,
             refresher: refresher,
             now: { now }
         )
 
-        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        let summary = await service.run(onProgress: { _ in })
 
-        #expect(summary.refreshed == 0)
-        #expect(summary.results.map(\.status) == [.skippedRecent])
-        #expect(await refresher.requests.isEmpty)
+        #expect(summary.refreshed == 1)
+        #expect(summary.results.map(\.status) == [.refreshed])
+        #expect(await refresher.requests == ["refresh-aisy"])
+        let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
+        #expect(auth.tokens.refreshToken == "refresh-aisy-new")
+        #expect(auth.tokens.accessToken == "access-aisy-new")
     }
 
-    @Test func fractionalLastRefreshWithinTwentyFourHoursIsSkipped() async throws {
+    @Test func fractionalLastRefreshWithinTwentyFourHoursIsStillCheckedAndRefreshed() async throws {
         let fixture = try AuthHealthCheckFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -94,20 +104,69 @@ struct AuthHealthCheckServiceTests {
             refreshToken: "refresh-aisy",
             lastRefresh: "2026-05-17T05:45:00.123456Z"
         )
-        let refresher = HealthCheckFakeOAuthTokenRefresher(responses: [:])
+        let refresher = HealthCheckFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .success(.init(
+                    idToken: AuthHealthCheckFixture.jwt(email: "aisy@example.com", userID: "user_aisy", accountID: "acct_aisy"),
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
         let service = AuthHealthCheckService(
             homeDirectory: fixture.homeDirectory,
             refresher: refresher,
             now: { now }
         )
 
-        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        let summary = await service.run(onProgress: { _ in })
 
-        #expect(summary.results.map(\.status) == [.skippedRecent])
-        #expect(await refresher.requests.isEmpty)
+        #expect(summary.results.map(\.status) == [.refreshed])
+        #expect(await refresher.requests == ["refresh-aisy"])
     }
 
-    @Test func missingLastRefreshIsTreatedAsStale() async throws {
+    @Test func recentAccountWithReusedRefreshTokenReportsReloginRequired() async throws {
+        let fixture = try AuthHealthCheckFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-aisy",
+            lastRefresh: "2026-05-17T05:45:00Z"
+        )
+        let refresher = HealthCheckFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .failure(.reloginRequired(.reused))
+            ]
+        )
+        let service = AuthHealthCheckService(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+
+        var transcriptLines: [String] = []
+        let summary = await service.run { event in
+            transcriptLines.append(event.transcriptLine)
+        }
+
+        #expect(summary.failed == 1)
+        #expect(summary.results.map(\.status) == [.reloginRequired(.reused)])
+        #expect(await refresher.requests == ["refresh-aisy"])
+        #expect(transcriptLines.contains("aisy@example.com: needs login; refresh token was already used"))
+        let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
+        #expect(auth.tokens.refreshToken == "refresh-aisy")
+        #expect(auth.tokens.accessToken == "access-old")
+    }
+
+    @Test func missingLastRefreshIsCheckedAndRefreshed() async throws {
         let fixture = try AuthHealthCheckFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -138,7 +197,7 @@ struct AuthHealthCheckServiceTests {
             now: { now }
         )
 
-        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        let summary = await service.run(onProgress: { _ in })
 
         #expect(summary.results.map(\.status) == [.refreshed])
         #expect(await refresher.requests == ["refresh-aisy"])
@@ -166,7 +225,7 @@ struct AuthHealthCheckServiceTests {
             now: { now }
         )
 
-        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        let summary = await service.run(onProgress: { _ in })
 
         #expect(summary.results.map(\.status) == [.skippedAPIKey])
         #expect(await refresher.requests.isEmpty)
@@ -204,7 +263,7 @@ struct AuthHealthCheckServiceTests {
             now: { now }
         )
 
-        _ = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        _ = await service.run(onProgress: { _ in })
 
         let activeAuth = try fixture.readActiveAuth()
         #expect(activeAuth.tokens.refreshToken == "refresh-aisy-new")
@@ -254,7 +313,7 @@ struct AuthHealthCheckServiceTests {
                 now: { now }
             )
 
-            let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+            let summary = await service.run(onProgress: { _ in })
 
             #expect(summary.results.map(\.status) == [testCase.2], "case \(testCase.0)")
             let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
@@ -309,7 +368,7 @@ struct AuthHealthCheckServiceTests {
             now: { now }
         )
 
-        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        let summary = await service.run(onProgress: { _ in })
 
         #expect(summary.refreshed == 2)
         #expect(await refresher.maxConcurrentRequests == 1)
@@ -341,7 +400,7 @@ struct AuthHealthCheckServiceTests {
             now: { now }
         )
 
-        let summary = await service.run(staleAfter: oneDay, onProgress: { _ in })
+        let summary = await service.run(onProgress: { _ in })
 
         #expect(summary.results.map(\.status) == [.busy])
         #expect(await refresher.requests.isEmpty)

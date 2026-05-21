@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RELEASE_VERSION="${1:-2026.05.21.2}"
+RELEASE_VERSION="${1:-2026.05.21.3}"
 RELEASE_VERSION="${RELEASE_VERSION#v}"
 TAG="v$RELEASE_VERSION"
 

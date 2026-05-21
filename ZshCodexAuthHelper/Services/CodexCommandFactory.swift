@@ -151,7 +151,7 @@ struct CodexCommandFactory {
             pid = $1
             command = $0
             sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", command)
-            if (index(command, marker) == 1) {
+            if (index(command, marker) == 1 || command ~ /\\/Codex\\.app\\/Contents\\//) {
               print pid
             }
           }'
@@ -207,6 +207,90 @@ struct CodexCommandFactory {
             arguments: ["-lc", script],
             risk: .restartsApplication,
             displayCommand: "osascript -e 'tell application id \"\(bundleIdentifier)\" to quit'; wait for Codex to exit; open \(ShellQuoting.quote(appBundlePath))"
+        )
+    }
+
+    func openCodex(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) -> CommandDefinition {
+        let bundleIdentifier = "com.openai.codex"
+        let appBundlePath = CodexResourceSettings.codexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let script = """
+        bundle_id=\(ShellQuoting.quote(bundleIdentifier))
+        app_bundle=\(ShellQuoting.quote(appBundlePath))
+
+        if [[ -d "$app_bundle" ]]; then
+          /usr/bin/open "$app_bundle"
+        else
+          /usr/bin/open -b "$bundle_id"
+        fi
+        """
+
+        return CommandDefinition(
+            id: "open-codex",
+            title: "Open Codex",
+            systemImage: "arrow.up.forward.app",
+            executable: "/bin/zsh",
+            arguments: ["-lc", script],
+            displayCommand: "open \(ShellQuoting.quote(appBundlePath))"
+        )
+    }
+
+    func forceCloseCodex(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) -> CommandDefinition {
+        let appBundlePath = CodexResourceSettings.codexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let script = """
+        app_bundle=\(ShellQuoting.quote(appBundlePath))
+        process_marker="${app_bundle}/Contents/"
+
+        codexPids() {
+          /bin/ps -axo pid=,command= | /usr/bin/awk -v marker="$process_marker" '
+          {
+            pid = $1
+            command = $0
+            sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", command)
+            if (index(command, marker) == 1 || command ~ /\\/Codex\\.app\\/Contents\\//) {
+              print pid
+            }
+          }'
+        }
+
+        waitForCodexExit() {
+          local remaining="$1"
+          local delay="$2"
+          while (( remaining > 0 )); do
+            if [[ -z "$(codexPids)" ]]; then
+              return 0
+            fi
+            sleep "$delay"
+            remaining=$(( remaining - 1 ))
+          done
+          [[ -z "$(codexPids)" ]]
+        }
+
+        signalCodex() {
+          local signal="$1"
+          local pids
+          pids="$(codexPids)"
+          if [[ -n "$pids" ]]; then
+            /bin/kill "-$signal" ${(f)pids} 2>/dev/null || true
+          fi
+        }
+
+        signalCodex TERM
+        waitForCodexExit 10 0.1 || true
+
+        if [[ -n "$(codexPids)" ]]; then
+          signalCodex KILL
+          waitForCodexExit 20 0.1 || true
+        fi
+        """
+
+        return CommandDefinition(
+            id: "force-close-codex",
+            title: "Force Close Codex",
+            systemImage: "xmark.circle",
+            executable: "/bin/zsh",
+            arguments: ["-lc", script],
+            risk: .destructive,
+            displayCommand: "force close Codex at \(ShellQuoting.quote(appBundlePath))"
         )
     }
 

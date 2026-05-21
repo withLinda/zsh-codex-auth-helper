@@ -8,6 +8,7 @@ struct TerminalPanelView: View {
 
     let focusRequest: Int
     let submitDraft: (String) -> Void
+    let openURL: (URL) -> Void
 
     @State private var copiedDeviceCode: String?
     @State private var copyFeedbackTask: Task<Void, Never>?
@@ -50,11 +51,13 @@ struct TerminalPanelView: View {
 
             if let url = store.latestURL {
                 Button {
-                    NSWorkspace.shared.open(url)
+                    openURL(url)
                 } label: {
-                    Label("Open Link", systemImage: "safari")
+                    Label("Open Incognito", systemImage: "eye.slash")
                 }
                 .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.accent))
+                .help("Open login link in Chrome Incognito")
+                .accessibilityLabel("Open login link in Chrome Incognito")
             }
 
             if let deviceCode = store.latestDeviceCode {

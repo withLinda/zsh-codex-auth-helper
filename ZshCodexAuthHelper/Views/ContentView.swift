@@ -6,10 +6,13 @@ struct ContentView: View {
     @StateObject private var transcriptStore = TerminalTranscriptStore()
     @StateObject private var runner = CommandRunner()
     @StateObject private var authSessionMonitor = AuthSessionMonitor()
+    @StateObject private var codexAppMonitor = CodexAppMonitor()
 
     private let commandFactory: CodexCommandFactory
     private let switchPreflightValidator: AuthSwitchPreflightValidator
     private let healthCheckService: AuthHealthCheckService
+    private let loginAutoSavePlanner: LoginAutoSavePlanner
+    private let linkOpener: ChromeIncognitoLinkOpener
 
     @State private var authFilePath: String
     @State private var alias: String
@@ -25,13 +28,17 @@ struct ContentView: View {
     init(
         commandFactory: CodexCommandFactory = .live(),
         switchPreflightValidator: AuthSwitchPreflightValidator = AuthSwitchPreflightValidator(),
-        healthCheckService: AuthHealthCheckService = AuthHealthCheckService()
+        healthCheckService: AuthHealthCheckService = AuthHealthCheckService(),
+        loginAutoSavePlanner: LoginAutoSavePlanner = LoginAutoSavePlanner(),
+        linkOpener: ChromeIncognitoLinkOpener = ChromeIncognitoLinkOpener()
     ) {
         self.commandFactory = commandFactory
         self.switchPreflightValidator = switchPreflightValidator
         self.healthCheckService = healthCheckService
+        self.loginAutoSavePlanner = loginAutoSavePlanner
+        self.linkOpener = linkOpener
         _authFilePath = State(initialValue: commandFactory.defaultAuthFilePath)
-        _alias = State(initialValue: "main")
+        _alias = State(initialValue: "")
     }
 
     var body: some View {
@@ -40,11 +47,14 @@ struct ContentView: View {
                 alias: $alias,
                 authFilePath: $authFilePath,
                 authSession: authSessionMonitor.info,
+                codexAppState: codexAppMonitor.state,
                 isRunning: isBusy,
-                runLogin: { run(commandFactory.login(codexResourceDirectory: codexResourceDirectory)) },
+                runLogin: runLogin,
                 runImport: runImport,
                 runSwitch: prepareSwitchDraft,
-                runRestart: { run(commandFactory.restartCodex(codexResourceDirectory: codexResourceDirectory)) },
+                runRestart: runRestartCodex,
+                runOpenCodex: runOpenCodex,
+                runForceCloseCodex: runForceCloseCodex,
                 runList: { runFactoryCommand(commandFactory.list) },
                 runHealthCheck: runHealthCheck,
                 requestRemove: prepareRemoveDraft
@@ -56,33 +66,76 @@ struct ContentView: View {
                 runner: runner,
                 input: $terminalInput,
                 focusRequest: terminalInputFocusRequest,
-                submitDraft: submitTerminalDraft
+                submitDraft: submitTerminalDraft,
+                openURL: openLoginURL
             )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(ThemeTokens.Colors.appBackground)
         .onAppear {
             authSessionMonitor.start(authFilePath: authFilePath)
+            codexAppMonitor.start(codexResourceDirectory: codexResourceDirectory)
         }
         .onDisappear {
             authSessionMonitor.stop()
+            codexAppMonitor.stop()
         }
         .onChange(of: authFilePath) { _, newPath in
             authSessionMonitor.updateAuthFilePath(newPath)
         }
+        .onChange(of: codexResourceDirectory) { _, newDirectory in
+            codexAppMonitor.update(codexResourceDirectory: newDirectory)
+        }
         .onChange(of: runner.isRunning) { wasRunning, isRunning in
             if wasRunning, isRunning == false {
                 authSessionMonitor.refreshCurrent()
+                codexAppMonitor.refresh()
             }
+        }
+    }
+
+    private func runLogin() {
+        run(commandFactory.login(codexResourceDirectory: codexResourceDirectory)) { result in
+            handleLoginCompletion(result)
         }
     }
 
     private func runImport() {
         do {
             let command = try commandFactory.importAuth(authFilePath: authFilePath, alias: alias)
-            run(command)
+            run(command) { result in
+                if result.exitCode == 0 {
+                    alias = ""
+                }
+            }
         } catch {
             transcriptStore.failToStart(error)
+        }
+    }
+
+    private func runRestartCodex() {
+        run(commandFactory.restartCodex(codexResourceDirectory: codexResourceDirectory)) { _ in
+            codexAppMonitor.refresh()
+        }
+    }
+
+    private func runOpenCodex() {
+        run(commandFactory.openCodex(codexResourceDirectory: codexResourceDirectory)) { _ in
+            codexAppMonitor.refresh()
+        }
+    }
+
+    private func runForceCloseCodex() {
+        run(commandFactory.forceCloseCodex(codexResourceDirectory: codexResourceDirectory)) { _ in
+            codexAppMonitor.refresh()
+        }
+    }
+
+    private func openLoginURL(_ url: URL) {
+        do {
+            try linkOpener.open(url)
+        } catch {
+            transcriptStore.appendSystemLine(error.localizedDescription)
         }
     }
 
@@ -124,8 +177,33 @@ struct ContentView: View {
         }
     }
 
-    private func run(_ command: CommandDefinition) {
-        runner.start(command, transcriptStore: transcriptStore)
+    private func run(_ command: CommandDefinition, onFinish: ((PTYCommandResult) -> Void)? = nil) {
+        runner.start(command, transcriptStore: transcriptStore, onFinish: onFinish)
+    }
+
+    private func handleLoginCompletion(_ result: PTYCommandResult) {
+        guard result.exitCode == 0 else {
+            return
+        }
+
+        authSessionMonitor.refreshCurrent()
+
+        do {
+            guard let emailAlias = loginAutoSavePlanner.emailAlias(authFilePath: authFilePath) else {
+                transcriptStore.appendSystemLine("Login finished, but no email was found in the auth file. Use Save / Update Login manually.")
+                return
+            }
+
+            transcriptStore.appendSystemLine("Login finished. Saving login as \(emailAlias)...")
+            let command = try commandFactory.importAuth(authFilePath: authFilePath, alias: emailAlias)
+            run(command) { result in
+                if result.exitCode == 0 {
+                    alias = ""
+                }
+            }
+        } catch {
+            transcriptStore.failToStart(error)
+        }
     }
 
     private func runPreflightSwitch(query: String) async {
