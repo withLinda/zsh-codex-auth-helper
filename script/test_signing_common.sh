@@ -99,6 +99,29 @@ SH
   fi
 }
 
+test_release_signing_args_allows_development_signed_release_when_requested() {
+  local fake_bin output
+  fake_bin="$(mktemp -d)"
+  cat >"$fake_bin/security" <<'SH'
+#!/usr/bin/env bash
+cat <<'OUT'
+  1) 1111111111111111111111111111111111111111 "Apple Development: Linda Fitriani (HD45P449D9)"
+     1 valid identities found
+OUT
+SH
+  chmod +x "$fake_bin/security"
+
+  output="$(
+    PATH="$fake_bin:$PATH"
+    hash -r
+    unset DEVELOPMENT_TEAM CODE_SIGN_IDENTITY
+    ALLOW_DEVELOPMENT_SIGNED_RELEASE=1 release_signing_args
+  )"
+
+  assert_contains "$output" "CODE_SIGN_STYLE=Manual"
+  assert_contains "$output" "CODE_SIGN_IDENTITY=Apple Development: Linda Fitriani (HD45P449D9)"
+}
+
 test_verify_app_signature_rejects_adhoc_signature() {
   local fake_bin app_dir
   fake_bin="$(mktemp -d)"
@@ -179,6 +202,7 @@ test_development_signing_args_default_to_linda_identity
 test_development_signing_args_allow_overrides
 test_distribution_signing_args_use_developer_id_identity
 test_distribution_signing_args_fail_without_developer_id
+test_release_signing_args_allows_development_signed_release_when_requested
 test_verify_app_signature_rejects_adhoc_signature
 test_release_script_fails_cleanly_without_developer_id
 

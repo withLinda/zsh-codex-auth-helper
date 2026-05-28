@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RELEASE_VERSION="${1:-2026.05.21.4}"
+RELEASE_VERSION="${1:-2026.05.28.1}"
 RELEASE_VERSION="${RELEASE_VERSION#v}"
 TAG="v$RELEASE_VERSION"
 
@@ -42,7 +42,7 @@ cd "$ROOT_DIR"
 source "$ROOT_DIR/script/signing_common.sh"
 
 echo "Building $APP_NAME $APP_VERSION ($BUILD_NUMBER) for release $TAG..."
-signing_args_output="$(distribution_signing_args)"
+signing_args_output="$(release_signing_args)"
 signing_args=()
 while IFS= read -r arg; do
   signing_args+=("$arg")
@@ -56,6 +56,7 @@ xcodebuild \
   -destination 'platform=macOS' \
   -derivedDataPath "$DERIVED_DATA" \
   "${signing_args[@]}" \
+  CODE_SIGN_INJECT_BASE_ENTITLEMENTS=NO \
   MARKETING_VERSION="$APP_VERSION" \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   build

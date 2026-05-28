@@ -6,6 +6,10 @@ signing_error() {
   echo "error: $*" >&2
 }
 
+signing_warning() {
+  echo "warning: $*" >&2
+}
+
 codesigning_identities() {
   security find-identity -p codesigning -v
 }
@@ -87,6 +91,32 @@ distribution_signing_args() {
   if [[ -n "${DEVELOPMENT_TEAM:-}" ]]; then
     printf '%s\n' "DEVELOPMENT_TEAM=$(distribution_team)"
   fi
+}
+
+release_signing_args() {
+  local distribution_errors output status
+  distribution_errors="$(mktemp)"
+
+  if output="$(distribution_signing_args 2>"$distribution_errors")"; then
+    rm -f "$distribution_errors"
+    printf '%s\n' "$output"
+    return 0
+  else
+    status=$?
+  fi
+
+  if [[ "${ALLOW_DEVELOPMENT_SIGNED_RELEASE:-}" != "1" ]]; then
+    cat "$distribution_errors" >&2
+    rm -f "$distribution_errors"
+    return "$status"
+  fi
+
+  rm -f "$distribution_errors"
+  signing_warning "No Developer ID Application identity was found."
+  signing_warning "ALLOW_DEVELOPMENT_SIGNED_RELEASE=1 is set, so the DMG will be development-signed and not notarized."
+
+  require_development_signing_identity || return 1
+  development_signing_args
 }
 
 verify_app_signature() {
