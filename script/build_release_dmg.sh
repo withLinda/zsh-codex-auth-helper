@@ -38,7 +38,16 @@ VOLUME_NAME="Codex Auth Helper $TAG"
 
 cd "$ROOT_DIR"
 
+# shellcheck source=script/signing_common.sh
+source "$ROOT_DIR/script/signing_common.sh"
+
 echo "Building $APP_NAME $APP_VERSION ($BUILD_NUMBER) for release $TAG..."
+signing_args_output="$(distribution_signing_args)"
+signing_args=()
+while IFS= read -r arg; do
+  signing_args+=("$arg")
+done <<<"$signing_args_output"
+
 xcodegen generate >/dev/null
 xcodebuild \
   -project "$PROJECT" \
@@ -46,10 +55,12 @@ xcodebuild \
   -configuration Release \
   -destination 'platform=macOS' \
   -derivedDataPath "$DERIVED_DATA" \
-  CODE_SIGNING_ALLOWED=NO \
+  "${signing_args[@]}" \
   MARKETING_VERSION="$APP_VERSION" \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
   build
+
+verify_app_signature "$APP_BUNDLE"
 
 rm -rf "$WORK_DIR"
 mkdir -p "$STAGING_DIR" "$DIST_DIR"

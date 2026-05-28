@@ -12,11 +12,25 @@ BUNDLE_ID="com.linda.zsh-codexauth-helper"
 
 cd "$ROOT_DIR"
 
+# shellcheck source=script/signing_common.sh
+source "$ROOT_DIR/script/signing_common.sh"
+
 usage() {
   echo "usage: $0 [run|--debug|--logs|--telemetry|--verify]" >&2
 }
 
 build_app() {
+  require_development_signing_identity
+
+  local signing_args_output
+  signing_args_output="$(development_signing_args)"
+
+  local signing_args=()
+  local arg
+  while IFS= read -r arg; do
+    signing_args+=("$arg")
+  done <<<"$signing_args_output"
+
   xcodegen generate >/dev/null
   xcodebuild \
     -project "$PROJECT" \
@@ -24,8 +38,10 @@ build_app() {
     -configuration Debug \
     -destination 'platform=macOS' \
     -derivedDataPath "$DERIVED_DATA" \
-    CODE_SIGNING_ALLOWED=NO \
+    "${signing_args[@]}" \
     build
+
+  verify_app_signature "$APP_BUNDLE"
 }
 
 open_app() {
@@ -61,4 +77,3 @@ case "$MODE" in
     exit 2
     ;;
 esac
-
