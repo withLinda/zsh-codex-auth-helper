@@ -26,7 +26,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.linda.zsh-codexauth-helper
         PRODUCT_NAME: ZshCodexAuthHelper
         MARKETING_VERSION: "2026.05.28"
-        CURRENT_PROJECT_VERSION: 2
+        CURRENT_PROJECT_VERSION: 3
         INFOPLIST_KEY_CFBundleDisplayName: Codex Auth Helper
         INFOPLIST_KEY_CFBundleName: Codex Auth Helper
         INFOPLIST_KEY_CFBundleShortVersionString: "$(MARKETING_VERSION)"
@@ -34,7 +34,7 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.developer-tools
         INFOPLIST_KEY_NSHumanReadableCopyright: ""
         GENERATE_INFOPLIST_FILE: YES
-        ENABLE_HARDENED_RUNTIME: NO
+        ENABLE_HARDENED_RUNTIME: YES
         ENABLE_TESTABILITY: YES
 
   ZshCodexAuthHelperTests:

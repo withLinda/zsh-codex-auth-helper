@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-RELEASE_VERSION="${1:-2026.05.28.2}"
+RELEASE_VERSION="${1:-2026.05.28.3}"
 RELEASE_VERSION="${RELEASE_VERSION#v}"
 TAG="v$RELEASE_VERSION"
 
@@ -44,9 +44,18 @@ source "$ROOT_DIR/script/signing_common.sh"
 echo "Building $APP_NAME $APP_VERSION ($BUILD_NUMBER) for release $TAG..."
 signing_args_output="$(release_signing_args)"
 signing_args=()
+code_sign_identity=""
 while IFS= read -r arg; do
   signing_args+=("$arg")
+  if [[ "$arg" == CODE_SIGN_IDENTITY=* ]]; then
+    code_sign_identity="${arg#CODE_SIGN_IDENTITY=}"
+  fi
 done <<<"$signing_args_output"
+
+if [[ -z "$code_sign_identity" ]]; then
+  echo "error: Could not resolve release code signing identity." >&2
+  exit 1
+fi
 
 xcodegen generate >/dev/null
 xcodebuild \
@@ -78,6 +87,9 @@ hdiutil create \
   -ov \
   -format UDZO \
   "$DMG_PATH"
+
+echo "Signing $DMG_PATH..."
+codesign --force --sign "$code_sign_identity" --timestamp "$DMG_PATH"
 
 echo "Verifying DMG..."
 hdiutil verify "$DMG_PATH"

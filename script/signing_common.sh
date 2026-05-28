@@ -86,7 +86,8 @@ distribution_signing_args() {
 
   printf '%s\n' \
     "CODE_SIGN_STYLE=Manual" \
-    "CODE_SIGN_IDENTITY=$identity"
+    "CODE_SIGN_IDENTITY=$identity" \
+    "OTHER_CODE_SIGN_FLAGS=--timestamp"
 
   if [[ -n "${DEVELOPMENT_TEAM:-}" ]]; then
     printf '%s\n' "DEVELOPMENT_TEAM=$(distribution_team)"
@@ -151,6 +152,18 @@ verify_app_signature() {
   if grep -q 'Sealed Resources=none' <<<"$codesign_details"; then
     signing_error "App bundle resources are not sealed by the code signature."
     return 1
+  fi
+
+  if grep -q 'Authority=Developer ID Application:' <<<"$codesign_details"; then
+    if ! grep -q '^Timestamp=' <<<"$codesign_details"; then
+      signing_error "Developer ID app signature has no secure timestamp."
+      return 1
+    fi
+
+    if ! grep -q 'flags=.*runtime' <<<"$codesign_details"; then
+      signing_error "Developer ID app signature is missing hardened runtime."
+      return 1
+    fi
   fi
 
   if ! codesign --verify --strict --verbose=4 "$app_bundle"; then

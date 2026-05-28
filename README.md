@@ -55,13 +55,13 @@ For most users, this is the easiest way to install the app. You do not need Xcod
 
 Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the DMG file:
 
-- `CodexAuthHelper-v2026.05.28.2.dmg`
+- `CodexAuthHelper-v2026.05.28.3.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.05.28.2.dmg.sha256`
+- `CodexAuthHelper-v2026.05.28.3.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
@@ -76,7 +76,7 @@ Then install it:
 3. If Finder asks whether to replace an older copy, choose **Replace**.
 4. Open `Codex Auth Helper` from `Applications`.
 
-The DMG is Developer ID-signed but not notarized. On first launch, macOS may still show a warning. If that happens, right-click `Codex Auth Helper`, choose **Open**, then choose **Open** again.
+The DMG is Developer ID-signed and notarized. If macOS still shows a warning on first launch, right-click `Codex Auth Helper`, choose **Open**, then choose **Open** again.
 
 If macOS says `ZshCodexAuthHelper` was blocked, open **System Settings > Privacy & Security**, then click **Open Anyway**.
 
