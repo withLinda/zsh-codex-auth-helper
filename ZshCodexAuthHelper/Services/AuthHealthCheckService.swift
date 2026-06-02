@@ -121,10 +121,7 @@ enum AuthHealthCheckEvent: Sendable {
 
 struct AuthHealthCheckService {
     private let store: AuthAccountStore
-    private let fileManager: FileManager
-    private let lock: AuthAccountFileLock
-    private let refresher: OAuthTokenRefreshing
-    private let now: @Sendable () -> Date
+    private let coordinator: AuthAccountRefreshCoordinator
 
     init(
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
@@ -134,10 +131,13 @@ struct AuthHealthCheckService {
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = AuthAccountStore(homeDirectory: homeDirectory, fileManager: fileManager)
-        self.fileManager = fileManager
-        self.lock = lock ?? AuthAccountFileLock(homeDirectory: homeDirectory, fileManager: fileManager)
-        self.refresher = refresher
-        self.now = now
+        self.coordinator = AuthAccountRefreshCoordinator(
+            homeDirectory: homeDirectory,
+            fileManager: fileManager,
+            lock: lock,
+            refresher: refresher,
+            now: now
+        )
     }
 
     func run(
@@ -178,78 +178,36 @@ struct AuthHealthCheckService {
             return result(record: record, status: .skippedAPIKey)
         }
 
-        let storedAuthURL = store.existingAccountAuthURL(accountKey: record.accountKey)
-        guard fileManager.fileExists(atPath: storedAuthURL.path) else {
-            return result(record: record, status: .missingStoredAuth)
-        }
-
-        let heldLock: AuthAccountHeldLock
         do {
-            guard let acquiredLock = try lock.tryLock(accountKey: record.accountKey) else {
-                return result(record: record, status: .busy)
+            let outcome = try await coordinator.prepare(record: record, registry: registry, policy: .always)
+            switch outcome {
+            case .refreshed:
+                return result(record: record, status: .refreshed)
+            case .skippedAPIKey:
+                return result(record: record, status: .skippedAPIKey)
+            case .readyWithoutRefresh:
+                return result(record: record, status: .transient("Login check did not refresh the saved account."))
             }
-            heldLock = acquiredLock
-        } catch {
-            return result(record: record, status: .transient(error.localizedDescription))
-        }
-        defer {
-            heldLock.release()
-        }
-
-        var authFile: StoredAuthFile
-        do {
-            authFile = try StoredAuthFile(url: storedAuthURL)
-        } catch {
-            return result(record: record, status: .transient(error.localizedDescription))
-        }
-
-        if authFile.isAPIKeyAuth {
-            return result(record: record, status: .skippedAPIKey)
-        }
-
-        guard let refreshToken = authFile.refreshToken else {
-            return result(record: record, status: .missingRefreshToken)
-        }
-
-        let response: OAuthRefreshResponse
-        do {
-            response = try await refresher.refresh(refreshToken: refreshToken)
-        } catch let failure as OAuthRefreshFailure {
-            switch failure {
+        } catch let error as AuthAccountRefreshError {
+            switch error {
+            case .missingStoredAuth:
+                return result(record: record, status: .missingStoredAuth)
+            case .missingRefreshToken:
+                return result(record: record, status: .missingRefreshToken)
+            case .busy:
+                return result(record: record, status: .busy)
             case .reloginRequired(let reason):
                 return result(record: record, status: .reloginRequired(reason))
+            case .accountMismatch:
+                return result(record: record, status: .accountMismatch)
+            case .invalidRefreshResponse:
+                return result(record: record, status: .invalidRefreshResponse)
             case .transient(let message):
                 return result(record: record, status: .transient(message))
             }
         } catch {
             return result(record: record, status: .transient(error.localizedDescription))
         }
-
-        do {
-            try AuthRefreshResponseValidator.validate(response, record: record, usedRefreshToken: refreshToken)
-        } catch AuthRefreshValidationError.invalidRefreshResponse {
-            return result(record: record, status: .invalidRefreshResponse)
-        } catch AuthRefreshValidationError.accountMismatch {
-            return result(record: record, status: .accountMismatch)
-        } catch {
-            return result(record: record, status: .transient(error.localizedDescription))
-        }
-
-        do {
-            authFile.apply(response: response, lastRefresh: Self.iso8601String(from: now()))
-            try authFile.write(to: storedAuthURL)
-
-            if registry.activeAccountKey == record.accountKey {
-                let activeURL = store.activeAuthURL
-                if fileManager.fileExists(atPath: activeURL.deletingLastPathComponent().path) {
-                    try authFile.write(to: activeURL)
-                }
-            }
-        } catch {
-            return result(record: record, status: .transient(error.localizedDescription))
-        }
-
-        return result(record: record, status: .refreshed)
     }
 
     private func result(record: AuthAccountRecord, status: AuthHealthCheckStatus) -> AuthHealthCheckAccountResult {
@@ -268,13 +226,6 @@ struct AuthHealthCheckService {
         await MainActor.run {
             onProgress(event)
         }
-    }
-
-    private static func iso8601String(from date: Date) -> String {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        return formatter.string(from: date)
     }
 }
 

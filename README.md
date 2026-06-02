@@ -19,7 +19,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 
 ## Features
 
-- **Login**: runs `codex login --device-auth`, then saves the login automatically with the full email as the alias when the email can be read.
+- **Login**: runs `codex-auth login --device-auth`, which saves the account through codex-auth's isolated login flow.
 - **Save / Update Login**: saves an auth JSON file. Leave the alias blank to update an existing saved account without changing its alias.
 - **Switch Account**: prepares `codex-auth switch` so you can type the alias.
 - **Open Blank Incognito**: opens a blank Chrome Incognito window from the sidebar, using your normal Chrome profile so Chrome can still offer saved passwords and passkeys.
@@ -38,13 +38,13 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - macOS 26 or newer.
 - Codex App installed.
 - Node.js and npm.
-- [`codex-auth`](https://github.com/loongphy/codex-auth) installed first.
+- [`codex-auth`](https://github.com/loongphy/codex-auth) installed first. Use the latest stable version.
 - For source builds: Xcode 26 and XcodeGen.
 
 Install `codex-auth`:
 
 ```bash
-npm install -g @loongphy/codex-auth
+npm install -g @loongphy/codex-auth@latest
 ```
 
 ## Install
@@ -103,14 +103,14 @@ Use this flow the first time:
 1. Install `codex-auth`:
 
    ```bash
-   npm install -g @loongphy/codex-auth
+   npm install -g @loongphy/codex-auth@latest
    ```
 
 2. Open **Codex Auth Helper**.
 3. Click **Login**.
 4. If the terminal shows a login link, click **Open Incognito**. If it shows a one-time code, click **Copy Code** and paste it into the browser page.
-5. Finish the login in the browser. When login succeeds, the app tries to save the login automatically using the full email address as the alias.
-6. If the login was not saved automatically, use **Save / Update Login**. The default auth file is `~/.codex/auth.json`.
+5. Finish the login in the browser. When login succeeds, `codex-auth` saves the account automatically.
+6. If you want to set or change an alias, use **Save / Update Login**. The default auth file is `~/.codex/auth.json`.
 7. Click **List Accounts** to confirm the saved account appears.
 8. Click **Switch Account...**, type the alias, email, account name, or row number, then press Return.
 9. Click **Restart Codex** so Codex App fully reloads with the selected account.
@@ -126,9 +126,9 @@ Use this flow the first time:
 
 ### Command Buttons
 
-- **Login** runs `codex login --device-auth`. It signs in through the browser, then tries to save the finished login automatically. If the app cannot read an email from the auth file, save it manually with **Save / Update Login**.
+- **Login** runs `codex-auth login --device-auth`. It signs in through the browser using an isolated codex-auth login flow, then saves the finished login through `codex-auth`. Use **Save / Update Login** only when you want to set an alias manually or update a chosen auth file.
 - **Open Blank Incognito** opens a blank Chrome Incognito window. It uses the same Chrome profile as your normal Chrome app, so saved passwords and passkeys can still be offered by Chrome.
-- **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching. If more than one account matches, use a more specific value.
+- **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching and syncs a newer matching active auth file back into the saved account. It refreshes OAuth only when Codex would need renewal now: normally when the access token is expired or within five minutes of expiry, with an eight-day fallback when expiry cannot be read. If more than one account matches, use a more specific value.
 - **Restart Codex** quits Codex App, waits for its helper processes to exit, and opens it again. Use this after switching accounts. A simple way to think about it: switching changes the key on disk, and restarting makes Codex pick up the new key.
 - **Open Codex** appears when Codex App is closed. It opens Codex without changing accounts.
 - **Force Close Codex** appears when Codex App is open. Use it only when Codex is stuck, did not close during restart, or still seems to be using the wrong account. It can kill Codex processes directly.
@@ -173,7 +173,7 @@ Rule of thumb:
 
 - Run **Health Check about once per week** for normal multi-account use.
 - Also run it before a long or important Codex session, after adding or updating accounts, after a failed switch or login, or before using an account that has been idle for a long time.
-- Do not run it after every small switch. **Switch Account...** already checks the selected account first, and it avoids refreshing when that account was refreshed very recently.
+- Do not run it after every small switch. **Switch Account...** usually does a local saved-login check. It refreshes only when Codex would need renewal now. **Health Check** proactively validates every saved OAuth account.
 
 Benefits:
 
@@ -189,7 +189,7 @@ Risks and tradeoffs:
 - It rotates tokens for every saved OAuth account it checks. If a refresh is interrupted by a crash, power loss, or disk problem, you may need to log in again.
 - If OpenAI has expired, revoked, or rejected a refresh token, Health Check cannot fix that account by itself. It will mark the account as needing login.
 
-If an account needs login again, use **Login**, finish the browser login, then use **Save / Update Login** if the app did not save it automatically.
+If an account needs login again, use **Login** and finish the browser login. Use **Save / Update Login** afterward only if you want to set or change an alias.
 
 ## Troubleshooting
 

@@ -11,7 +11,6 @@ struct ContentView: View {
     private let commandFactory: CodexCommandFactory
     private let switchPreflightValidator: AuthSwitchPreflightValidator
     private let healthCheckService: AuthHealthCheckService
-    private let loginAutoSavePlanner: LoginAutoSavePlanner
     private let linkOpener: ChromeIncognitoLinkOpener
 
     @State private var authFilePath: String
@@ -29,13 +28,11 @@ struct ContentView: View {
         commandFactory: CodexCommandFactory = .live(),
         switchPreflightValidator: AuthSwitchPreflightValidator = AuthSwitchPreflightValidator(),
         healthCheckService: AuthHealthCheckService = AuthHealthCheckService(),
-        loginAutoSavePlanner: LoginAutoSavePlanner = LoginAutoSavePlanner(),
         linkOpener: ChromeIncognitoLinkOpener = ChromeIncognitoLinkOpener()
     ) {
         self.commandFactory = commandFactory
         self.switchPreflightValidator = switchPreflightValidator
         self.healthCheckService = healthCheckService
-        self.loginAutoSavePlanner = loginAutoSavePlanner
         self.linkOpener = linkOpener
         _authFilePath = State(initialValue: commandFactory.defaultAuthFilePath)
         _alias = State(initialValue: "")
@@ -96,8 +93,13 @@ struct ContentView: View {
     }
 
     private func runLogin() {
-        run(commandFactory.login(codexResourceDirectory: codexResourceDirectory)) { result in
-            handleLoginCompletion(result)
+        do {
+            let command = try commandFactory.login(codexResourceDirectory: codexResourceDirectory)
+            run(command) { result in
+                handleLoginCompletion(result)
+            }
+        } catch {
+            transcriptStore.failToStart(error)
         }
     }
 
@@ -197,22 +199,7 @@ struct ContentView: View {
 
         authSessionMonitor.refreshCurrent()
 
-        do {
-            guard let emailAlias = loginAutoSavePlanner.emailAlias(authFilePath: authFilePath) else {
-                transcriptStore.appendSystemLine("Login finished, but no email was found in the auth file. Use Save / Update Login manually.")
-                return
-            }
-
-            transcriptStore.appendSystemLine("Login finished. Saving login as \(emailAlias)...")
-            let command = try commandFactory.importAuth(authFilePath: authFilePath, alias: emailAlias)
-            run(command) { result in
-                if result.exitCode == 0 {
-                    alias = ""
-                }
-            }
-        } catch {
-            transcriptStore.failToStart(error)
-        }
+        transcriptStore.appendSystemLine("Login finished. codex-auth saved the account. Use Save / Update Login only if you want to set or change an alias.")
     }
 
     private func runPreflightSwitch(query: String) async {
@@ -225,8 +212,8 @@ struct ContentView: View {
         transcriptStore.appendSystemLine("Checking saved login before switching...")
 
         do {
-            let account = try await switchPreflightValidator.validateAndRefresh(query: query)
-            transcriptStore.appendSystemLine("Login check passed for \(account.email).")
+            let result = try await switchPreflightValidator.prepareForSwitch(query: query)
+            transcriptStore.appendSystemLine(result.transcriptLine)
             let command = try commandFactory.switchAccount(query: query)
             isCheckingSwitch = false
             run(command)

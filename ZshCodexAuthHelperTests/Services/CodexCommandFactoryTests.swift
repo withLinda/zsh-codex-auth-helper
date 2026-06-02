@@ -3,91 +3,114 @@ import Testing
 @testable import ZshCodexAuthHelper
 
 struct CodexCommandFactoryTests {
-    @Test func loginUsesBundledCodexAndPrependsResourcePath() throws {
+    @Test func loginUsesCodexAuthAndPrependsResourcePathForBundledCodex() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/usr/bin:/bin",
-            fileExists: { $0 == "/Applications/Codex.app/Contents/Resources/codex" }
+            fileExists: {
+                $0 == "/Applications/Codex.app/Contents/Resources/codex" ||
+                    $0 == "/opt/homebrew/bin/codex-auth"
+            }
         )
         let factory = CodexCommandFactory(
             resolver: resolver,
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = factory.login()
+        let command = try factory.login()
 
-        #expect(command.executable == "/Applications/Codex.app/Contents/Resources/codex")
+        #expect(command.executable == "/opt/homebrew/bin/codex-auth")
         #expect(command.arguments == ["login", "--device-auth"])
-        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/usr/bin:/bin")
-        #expect(command.displayCommand.contains("codex login --device-auth"))
+        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin:/bin")
+        #expect(command.displayCommand.contains("codex-auth login --device-auth"))
     }
 
-    @Test func loginUsesCustomCodexResourceDirectoryWhenExecutableExists() throws {
+    @Test func loginUsesCustomCodexResourceDirectoryForCodexAuthPath() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/usr/bin:/bin",
-            fileExists: { $0 == "/Users/linda/Applications/Codex.app/Contents/Resources/codex" }
+            fileExists: {
+                $0 == "/Users/linda/Applications/Codex.app/Contents/Resources/codex" ||
+                    $0 == "/opt/homebrew/bin/codex-auth"
+            }
         )
         let factory = CodexCommandFactory(
             resolver: resolver,
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = factory.login(
+        let command = try factory.login(
             codexResourceDirectory: "/Users/linda/Applications/Codex.app/Contents/Resources"
         )
 
-        #expect(command.executable == "/Users/linda/Applications/Codex.app/Contents/Resources/codex")
-        #expect(command.environment["PATH"] == "/Users/linda/Applications/Codex.app/Contents/Resources:/usr/bin:/bin")
+        #expect(command.executable == "/opt/homebrew/bin/codex-auth")
+        #expect(command.environment["PATH"] == "/Users/linda/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin:/bin")
     }
 
-    @Test func loginFallsBackToCodexFromEnvironmentPathWhenCustomDirectoryIsInvalid() throws {
+    @Test func loginKeepsCustomResourceDirectoryOnPathWhenDirectoryIsInvalid() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/opt/homebrew/bin:/usr/bin",
-            fileExists: { $0 == "/opt/homebrew/bin/codex" }
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
         )
         let factory = CodexCommandFactory(
             resolver: resolver,
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = factory.login(
+        let command = try factory.login(
             codexResourceDirectory: "/Users/linda/Missing Codex.app/Contents/Resources"
         )
 
-        #expect(command.executable == "/opt/homebrew/bin/codex")
+        #expect(command.executable == "/opt/homebrew/bin/codex-auth")
         #expect(command.environment["PATH"] == "/Users/linda/Missing Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin")
     }
 
     @Test func loginDisplayCommandQuotesCustomPathSegmentWithSpaces() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/usr/bin:/bin",
-            fileExists: { $0 == "/Users/linda/My Apps/Codex.app/Contents/Resources/codex" }
+            fileExists: {
+                $0 == "/Users/linda/My Apps/Codex.app/Contents/Resources/codex" ||
+                    $0 == "/opt/homebrew/bin/codex-auth"
+            }
         )
         let factory = CodexCommandFactory(
             resolver: resolver,
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = factory.login(
+        let command = try factory.login(
             codexResourceDirectory: "/Users/linda/My Apps/Codex.app/Contents/Resources"
         )
 
-        #expect(command.displayCommand == "PATH='/Users/linda/My Apps/Codex.app/Contents/Resources':$PATH codex login --device-auth")
+        #expect(command.displayCommand == "PATH='/Users/linda/My Apps/Codex.app/Contents/Resources':/opt/homebrew/bin:$PATH codex-auth login --device-auth")
     }
 
     @Test func loginUsesDefaultResourceDirectoryWhenSettingIsBlank() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/usr/bin:/bin",
-            fileExists: { $0 == "/Applications/Codex.app/Contents/Resources/codex" }
+            fileExists: {
+                $0 == "/Applications/Codex.app/Contents/Resources/codex" ||
+                    $0 == "/opt/homebrew/bin/codex-auth"
+            }
         )
         let factory = CodexCommandFactory(
             resolver: resolver,
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = factory.login(codexResourceDirectory: "   ")
+        let command = try factory.login(codexResourceDirectory: "   ")
 
-        #expect(command.executable == "/Applications/Codex.app/Contents/Resources/codex")
-        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/usr/bin:/bin")
+        #expect(command.executable == "/opt/homebrew/bin/codex-auth")
+        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin:/bin")
+    }
+
+    @Test func loginRequiresCodexAuthExecutable() throws {
+        let factory = CodexCommandFactory(
+            resolver: .init(environmentPath: "/usr/bin:/bin", fileExists: { _ in false }),
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        #expect(throws: CommandFactoryError.missingExecutable("codex-auth")) {
+            _ = try factory.login()
+        }
     }
 
     @Test func importAuthPassesAliasAsSeparateArgument() throws {

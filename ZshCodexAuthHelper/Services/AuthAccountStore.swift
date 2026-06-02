@@ -251,6 +251,14 @@ struct StoredAuthFile {
         (tokens["refresh_token"] as? String).trimmedNonEmpty
     }
 
+    var accessTokenExpirationDate: Date? {
+        guard let accessToken = (tokens["access_token"] as? String).trimmedNonEmpty,
+              let expiration = JWT.payload(from: accessToken)?["exp"] as? NSNumber else {
+            return nil
+        }
+        return Date(timeIntervalSince1970: expiration.doubleValue)
+    }
+
     var lastRefreshDate: Date? {
         guard let value = (root["last_refresh"] as? String).trimmedNonEmpty else {
             return nil
@@ -264,6 +272,21 @@ struct StoredAuthFile {
             return false
         }
         return identity.userID == record.chatgptUserID && identity.accountID == record.chatgptAccountID
+    }
+
+    func needsProactiveRefresh(
+        now: Date,
+        accessTokenRefreshWindow: TimeInterval,
+        fallbackRefreshInterval: TimeInterval
+    ) -> Bool {
+        if let accessTokenExpirationDate {
+            return accessTokenExpirationDate <= now.addingTimeInterval(accessTokenRefreshWindow)
+        }
+
+        guard let lastRefreshDate else {
+            return false
+        }
+        return lastRefreshDate < now.addingTimeInterval(-fallbackRefreshInterval)
     }
 
     private var tokens: [String: Any] {

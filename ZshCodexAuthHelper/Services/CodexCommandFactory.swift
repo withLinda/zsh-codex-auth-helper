@@ -40,11 +40,9 @@ struct CodexCommandFactory {
         homeDirectory.appendingPathComponent(".codex/auth.json").path
     }
 
-    func login(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) -> CommandDefinition {
+    func login(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) throws -> CommandDefinition {
         let resourceDirectory = CodexResourceSettings.normalizedDirectory(codexResourceDirectory)
-        let bundledCodex = CodexResourceSettings.codexExecutablePath(in: resourceDirectory)
-        let executable = resolver.resolve(bundledCodex) ?? resolver.resolveFromEnvironmentPath("codex") ?? bundledCodex
-        let path = resolver.pathByPrepending(resourceDirectory)
+        let executable = try codexAuthExecutable()
         let arguments = ["login", "--device-auth"]
 
         return CommandDefinition(
@@ -53,8 +51,8 @@ struct CodexCommandFactory {
             systemImage: "person.crop.circle.badge.plus",
             executable: executable,
             arguments: arguments,
-            environment: ["PATH": path],
-            displayCommand: "PATH=\(ShellQuoting.quote(resourceDirectory)):$PATH codex login --device-auth"
+            environment: codexAuthEnvironment(prepending: resourceDirectory),
+            displayCommand: "PATH=\(ShellQuoting.quote(resourceDirectory)):/opt/homebrew/bin:$PATH \(ShellQuoting.displayCommand(executable: "codex-auth", arguments: arguments))"
         )
     }
 
@@ -301,9 +299,25 @@ struct CodexCommandFactory {
         throw CommandFactoryError.missingExecutable("codex-auth")
     }
 
-    private func codexAuthEnvironment() -> [String: String] {
+    private func codexAuthEnvironment(prepending directory: String? = nil) -> [String: String] {
         [
-            "PATH": resolver.pathByPrepending("/opt/homebrew/bin")
+            "PATH": codexAuthPath(prepending: directory)
         ]
+    }
+
+    private func codexAuthPath(prepending directory: String? = nil) -> String {
+        let basePath = resolver.pathByPrepending("/opt/homebrew/bin")
+        guard let directory = directory?.trimmedNonEmpty else {
+            return basePath
+        }
+
+        let parts = basePath.split(separator: ":").map(String.init)
+        if parts.contains(directory) {
+            return basePath
+        }
+        if basePath.isEmpty {
+            return directory
+        }
+        return "\(directory):\(basePath)"
     }
 }
