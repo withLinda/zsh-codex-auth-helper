@@ -34,6 +34,10 @@ Template:
 
 ## Tooling Lessons
 
+- 2026-06-02: Symptom: notarization could not start with common profile names like `notary-tool`, `linda-notary`, or `notary`.
+  Root cause: this repo uses the saved notarytool Keychain profile `codex-auth-helper-notary`.
+  Guardrail: for Codex Auth Helper DMG notarization, first check `xcrun notarytool history --keychain-profile codex-auth-helper-notary`, then submit with that same profile. Do not write Apple ID passwords or app-specific passwords into scripts or docs.
+
 - 2026-06-02: Symptom: `./script/test_signing_common.sh` failed with `permission denied`.
   Root cause: the checked-in script is not executable (`644`), even though it is a shell script.
   Guardrail: run it with `bash script/test_signing_common.sh` when verifying, and do not change file mode unless the user asks.
