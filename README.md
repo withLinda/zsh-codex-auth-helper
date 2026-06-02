@@ -53,15 +53,15 @@ npm install -g @loongphy/codex-auth@latest
 
 For most users, this is the easiest way to install the app. You do not need Xcode.
 
-Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the DMG file:
+Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the newest DMG file. For this release, download:
 
-- `CodexAuthHelper-v2026.05.28.3.dmg`
+- `CodexAuthHelper-v2026.06.02.1.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.05.28.3.dmg.sha256`
+- `CodexAuthHelper-v2026.06.02.1.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
