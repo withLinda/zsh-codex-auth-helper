@@ -55,13 +55,13 @@ For most users, this is the easiest way to install the app. You do not need Xcod
 
 Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the newest DMG file. For this release, download:
 
-- `CodexAuthHelper-v2026.06.02.1.dmg`
+- `CodexAuthHelper-v2026.06.04.1.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.06.02.1.dmg.sha256`
+- `CodexAuthHelper-v2026.06.04.1.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
@@ -128,7 +128,7 @@ Use this flow the first time:
 
 - **Login** runs `codex-auth login --device-auth`. It signs in through the browser using an isolated codex-auth login flow, then saves the finished login through `codex-auth`. Use **Save / Update Login** only when you want to set an alias manually or update a chosen auth file.
 - **Open Blank Incognito** opens a blank Chrome Incognito window. It uses the same Chrome profile as your normal Chrome app, so saved passwords and passkeys can still be offered by Chrome.
-- **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching and syncs a newer matching active auth file back into the saved account. It refreshes OAuth only when Codex would need renewal now: normally when the access token is expired or within five minutes of expiry, with an eight-day fallback when expiry cannot be read. If more than one account matches, use a more specific value.
+- **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching. For OAuth accounts, it refreshes only when Codex would need renewal now: when the access token is expired or within five minutes of expiry, or when expiry cannot be read and `last_refresh` is older than eight days. If the saved access token is still fresh, Switch does not ask OpenAI and does not spend the refresh token. If `~/.codex/auth.json` is a newer matching login, the app copies it into the saved account file first. The terminal prints safe `Switch check:` lines, but never prints full tokens. If OpenAI accepts a needed refresh, the app saves the new rotated token, then runs `codex-auth switch`. If a needed refresh finds an expired, already used, or revoked token, the wrong saved file, or a save failure, the switch is blocked. API-key accounts skip OAuth refresh because they do not use refresh tokens. If more than one account matches, use a more specific value.
 - **Restart Codex** quits Codex App, waits for its helper processes to exit, and opens it again. Use this after switching accounts. A simple way to think about it: switching changes the key on disk, and restarting makes Codex pick up the new key.
 - **Open Codex** appears when Codex App is closed. It opens Codex without changing accounts.
 - **Force Close Codex** appears when Codex App is open. Use it only when Codex is stuck, did not close during restart, or still seems to be using the wrong account. It can kill Codex processes directly.
@@ -173,7 +173,7 @@ Rule of thumb:
 
 - Run **Health Check about once per week** for normal multi-account use.
 - Also run it before a long or important Codex session, after adding or updating accounts, after a failed switch or login, or before using an account that has been idle for a long time.
-- Do not run it after every small switch. **Switch Account...** usually does a local saved-login check. It refreshes only when Codex would need renewal now. **Health Check** proactively validates every saved OAuth account.
+- You do not need **Health Check** after every small switch. **Switch Account...** checks only the selected account and refreshes it only when Codex would need renewal now. **Health Check** validates every saved OAuth account, so it is still useful before important work or about once per week.
 
 Benefits:
 
@@ -186,7 +186,7 @@ Risks and tradeoffs:
 
 - It makes extra auth-server requests. Running it too often is usually not useful.
 - It writes local auth files when tokens refresh.
-- It rotates tokens for every saved OAuth account it checks. If a refresh is interrupted by a crash, power loss, or disk problem, you may need to log in again.
+- It rotates tokens for every saved OAuth account it checks. **Switch Account...** rotates the selected OAuth account token only when that account needs renewal now. If a refresh is interrupted by a crash, power loss, or disk problem, you may need to log in again.
 - If OpenAI has expired, revoked, or rejected a refresh token, Health Check cannot fix that account by itself. It will mark the account as needing login.
 
 If an account needs login again, use **Login** and finish the browser login. Use **Save / Update Login** afterward only if you want to set or change an alias.
@@ -198,6 +198,8 @@ If an account needs login again, use **Login** and finish the browser login. Use
 - **Unreadable auth**: the selected auth file is not valid JSON or cannot be read. Log in again, then save the login.
 - **No `codex-auth` registry was found**: use **Save / Update Login** or **List Accounts** so `codex-auth` can create or refresh its account registry.
 - **Switch Account says more than one account matches**: run **List Accounts**, then switch with a full email, exact alias, or row number.
+- **Switch Account says the refresh token was already used**: this can happen only when Switch had to refresh because the saved access token needed renewal. Click **Login**, finish browser login, then switch again. If this happens every time, read the `Switch check:` lines. They should show whether the saved account file was stale, whether `~/.codex/auth.json` was newer, whether saving the new token failed, or whether another Codex or `codex-auth` process probably used the token first.
+- **Switch Account says the saved auth file does not match the selected account**: the saved file may belong to a different account. The app blocks the switch because switching from the wrong saved file is unsafe. Click **Login** for the selected account, then use **List Accounts** or **Save / Update Login** if you need to rebuild the saved registry or alias.
 - **Chrome is missing**: install Google Chrome, or copy the login link from the terminal output and open it manually.
 - **Codex opens from the wrong place**: open **Codex Auth Helper > Settings** and set the Codex resources path for your Codex App install.
 - **Health Check says `needs login`**: the saved login cannot refresh. Log in again, then save or update that account.

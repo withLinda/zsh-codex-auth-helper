@@ -72,10 +72,13 @@ struct AuthSwitchPreflightValidatorTests {
         let result = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(result.status == .readyWithoutRefresh)
+        #expect(result.transcriptLine == "Saved access token does not need refresh yet for aisy@example.com.")
         #expect(await refresher.requests.isEmpty)
+        let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
+        #expect(auth.tokens.refreshToken == "refresh-aisy")
     }
 
-    @Test func unreadableAccessTokenUsesEightDayFallbackExactly() async throws {
+    @Test func unreadableAccessTokenAtEightDayBoundaryDoesNotSpendRefreshToken() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -102,6 +105,7 @@ struct AuthSwitchPreflightValidatorTests {
         let result = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(result.status == .readyWithoutRefresh)
+        #expect(result.transcriptLine == "Saved access token does not need refresh yet for aisy@example.com.")
         #expect(await refresher.requests.isEmpty)
     }
 
@@ -310,6 +314,7 @@ struct AuthSwitchPreflightValidatorTests {
             userID: "user_aisy",
             accountID: "acct_aisy",
             refreshToken: "refresh-active",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
             lastRefresh: "2026-05-17T06:20:00Z"
         )
         let refresher = PreflightFakeOAuthTokenRefresher(
@@ -408,7 +413,7 @@ struct AuthSwitchPreflightValidatorTests {
         #expect(await refresher.requests.isEmpty)
     }
 
-    @Test func rowNumberUsesCodexAuthDisplayOrderWithoutRefreshing() async throws {
+    @Test func rowNumberUsesCodexAuthDisplayOrderAndRefreshesSelectedAccount() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: "user_damar::acct_damar",
@@ -429,20 +434,36 @@ struct AuthSwitchPreflightValidatorTests {
             email: "aisy.ahkusmawati938@gmail.com",
             userID: "user_aisy",
             accountID: "acct_aisy",
-            refreshToken: "refresh-aisy"
+            refreshToken: "refresh-aisy",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "01")
 
         #expect(account.account.email == "aisy.ahkusmawati938@gmail.com")
         let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(auth.tokens.refreshToken == "refresh-aisy")
-        #expect(auth.tokens.accessToken == AuthSwitchPreflightFixture.freshAccessJWT)
-        #expect(auth.lastRefresh == "2026-05-11T00:00:00Z")
+        #expect(auth.tokens.refreshToken == "refresh-aisy-new")
+        #expect(auth.tokens.accessToken == "access-aisy-new")
+        #expect(auth.lastRefresh == "2026-05-17T06:40:00Z")
     }
 
-    @Test func activeAccountPreflightDoesNotRotateActiveAuthFile() async throws {
+    @Test func nearExpiryActiveAccountPreflightRotatesActiveAuthFile() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: "user_damar::acct_damar",
@@ -455,19 +476,35 @@ struct AuthSwitchPreflightValidatorTests {
             email: "damar227@tuta.io",
             userID: "user_damar",
             accountID: "acct_damar",
-            refreshToken: "refresh-damar"
+            refreshToken: "refresh-damar",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
         )
         try fixture.copyStoredAuthToActive(accountKey: "user_damar::acct_damar")
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-damar": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "damar227@tuta.io",
+                    userID: "user_damar",
+                    accountID: "acct_damar",
+                    accessToken: "access-damar-new",
+                    refreshToken: "refresh-damar-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         _ = try await validator.prepareForSwitch(query: "damar")
 
         let activeAuth = try fixture.readActiveAuth()
-        #expect(activeAuth.tokens.refreshToken == "refresh-damar")
-        #expect(activeAuth.tokens.accessToken == AuthSwitchPreflightFixture.freshAccessJWT)
+        #expect(activeAuth.tokens.refreshToken == "refresh-damar-new")
+        #expect(activeAuth.tokens.accessToken == "access-damar-new")
     }
 
-    @Test func storedRefreshTimestampDoesNotTriggerPreflightRefresh() async throws {
+    @Test func nearExpiryStoredRefreshTimestampRefreshesDuringSwitch() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -481,18 +518,34 @@ struct AuthSwitchPreflightValidatorTests {
             userID: "user_aisy",
             accountID: "acct_aisy",
             refreshToken: "refresh-aisy",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
             lastRefresh: "2026-05-17T06:20:00Z"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(account.account.email == "aisy.ahkusmawati938@gmail.com")
         let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(auth.tokens.refreshToken == "refresh-aisy")
+        #expect(auth.tokens.refreshToken == "refresh-aisy-new")
     }
 
-    @Test func fractionalStoredRefreshTimestampDoesNotTriggerPreflightRefresh() async throws {
+    @Test func nearExpiryFractionalStoredRefreshTimestampRefreshesDuringSwitch() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -506,16 +559,33 @@ struct AuthSwitchPreflightValidatorTests {
             userID: "user_aisy",
             accountID: "acct_aisy",
             refreshToken: "refresh-aisy",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
             lastRefresh: "2026-05-17T06:20:00.123456Z"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(account.account.email == "aisy.ahkusmawati938@gmail.com")
+        #expect(await refresher.requests == ["refresh-aisy"])
     }
 
-    @Test func newerMatchingActiveAuthIsCopiedToStoredAuthWithoutRefreshing() async throws {
+    @Test func newerMatchingActiveAuthIsCopiedToStoredAuthThenRefreshed() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -536,17 +606,34 @@ struct AuthSwitchPreflightValidatorTests {
             userID: "user_aisy",
             accountID: "acct_aisy",
             refreshToken: "refresh-aisy-active",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
             lastRefresh: "2026-05-17T06:25:00Z"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy-active": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         _ = try await validator.prepareForSwitch(query: "aisy")
 
         let storedAuth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-active")
+        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-new")
+        #expect(await refresher.requests == ["refresh-aisy-active"])
     }
 
-    @Test func newerMatchingActiveAuthIsCopiedToStoredAuthWithoutRefreshingOutsideRecentWindow() async throws {
+    @Test func newerMatchingActiveAuthIsCopiedToStoredAuthThenRefreshedOutsideRecentWindow() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -567,21 +654,37 @@ struct AuthSwitchPreflightValidatorTests {
             userID: "user_aisy",
             accountID: "acct_aisy",
             refreshToken: "refresh-aisy-active",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
             lastRefresh: "2026-05-17T06:00:00Z"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy-active": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         _ = try await validator.prepareForSwitch(query: "aisy")
 
         let storedAuth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-active")
-        #expect(storedAuth.tokens.accessToken == AuthSwitchPreflightFixture.freshAccessJWT)
+        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-new")
+        #expect(storedAuth.tokens.accessToken == "access-aisy-new")
         let activeAuth = try fixture.readActiveAuth()
-        #expect(activeAuth.tokens.refreshToken == "refresh-aisy-active")
-        #expect(activeAuth.tokens.accessToken == AuthSwitchPreflightFixture.freshAccessJWT)
+        #expect(activeAuth.tokens.refreshToken == "refresh-aisy-new")
+        #expect(activeAuth.tokens.accessToken == "access-aisy-new")
     }
 
-    @Test func olderActiveAuthIsIgnoredWithoutRefreshing() async throws {
+    @Test func olderActiveAuthIsIgnoredAndStoredAuthRefreshes() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -595,6 +698,7 @@ struct AuthSwitchPreflightValidatorTests {
             userID: "user_aisy",
             accountID: "acct_aisy",
             refreshToken: "refresh-aisy-stored",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
             lastRefresh: "2026-05-17T06:00:00Z"
         )
         try fixture.writeActiveAuth(
@@ -604,15 +708,30 @@ struct AuthSwitchPreflightValidatorTests {
             refreshToken: "refresh-aisy-active",
             lastRefresh: "2026-05-17T05:00:00Z"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy-stored": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         _ = try await validator.prepareForSwitch(query: "aisy")
 
         let storedAuth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-stored")
+        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-new")
     }
 
-    @Test func differentAccountActiveAuthIsIgnoredWithoutRefreshing() async throws {
+    @Test func differentAccountActiveAuthIsNormalAndFreshStoredAuthDoesNotRefresh() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -635,15 +754,28 @@ struct AuthSwitchPreflightValidatorTests {
             refreshToken: "refresh-damar-active",
             lastRefresh: "2026-05-17T06:25:00Z"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(responses: [:])
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
 
-        _ = try await validator.prepareForSwitch(query: "aisy")
+        let result = try await validator.prepareForSwitch(query: "aisy") { event in
+            await logs.append(event)
+        }
 
+        #expect(result.status == .readyWithoutRefresh)
+        #expect(await refresher.requests.isEmpty)
         let storedAuth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
         #expect(storedAuth.tokens.refreshToken == "refresh-aisy-stored")
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: active auth ~/.codex/auth.json is a different account. This is normal while switching."))
+        #expect(lines.contains("Switch check: saved access token is fresh enough; no OpenAI refresh needed before switch."))
     }
 
-    @Test func storedRefreshTokenIsNotSpentDuringSwitchPreflight() async throws {
+    @Test func nearExpiryStoredRefreshTokenIsSpentDuringSwitchPreflight() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: "user_damar::acct_damar",
@@ -656,18 +788,34 @@ struct AuthSwitchPreflightValidatorTests {
             email: "aisy.ahkusmawati938@gmail.com",
             userID: "user_aisy",
             accountID: "acct_aisy",
-            refreshToken: "refresh-aisy"
+            refreshToken: "refresh-aisy",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(account.account.email == "aisy.ahkusmawati938@gmail.com")
         let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(auth.tokens.refreshToken == "refresh-aisy")
+        #expect(auth.tokens.refreshToken == "refresh-aisy-new")
     }
 
-    @Test func matchingActiveAuthIsCopiedToStoredAuthWithoutRepairRefresh() async throws {
+    @Test func matchingActiveAuthIsCopiedToStoredAuthAndRefreshed() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: "user_damar::acct_damar",
@@ -687,22 +835,38 @@ struct AuthSwitchPreflightValidatorTests {
             userID: "user_aisy",
             accountID: "acct_aisy",
             refreshToken: "refresh-aisy-active",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
             lastRefresh: "2026-05-17T06:25:00Z"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy-active": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(account.account.email == "aisy.ahkusmawati938@gmail.com")
         let storedAuth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-active")
-        #expect(storedAuth.tokens.accessToken == AuthSwitchPreflightFixture.freshAccessJWT)
+        #expect(storedAuth.tokens.refreshToken == "refresh-aisy-new")
+        #expect(storedAuth.tokens.accessToken == "access-aisy-new")
         let activeAuth = try fixture.readActiveAuth()
-        #expect(activeAuth.tokens.refreshToken == "refresh-aisy-active")
-        #expect(activeAuth.tokens.accessToken == AuthSwitchPreflightFixture.freshAccessJWT)
+        #expect(activeAuth.tokens.refreshToken == "refresh-aisy-new")
+        #expect(activeAuth.tokens.accessToken == "access-aisy-new")
     }
 
-    @Test func differentActiveAuthDoesNotTriggerRefreshOrRepair() async throws {
+    @Test func differentActiveAuthDoesNotRepairButStoredAuthRefreshes() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: "user_damar::acct_damar",
@@ -715,7 +879,8 @@ struct AuthSwitchPreflightValidatorTests {
             email: "aisy.ahkusmawati938@gmail.com",
             userID: "user_aisy",
             accountID: "acct_aisy",
-            refreshToken: "refresh-aisy-stale"
+            refreshToken: "refresh-aisy-stale",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
         )
         try fixture.writeActiveAuth(
             email: "damar227@tuta.io",
@@ -723,16 +888,31 @@ struct AuthSwitchPreflightValidatorTests {
             accountID: "acct_damar",
             refreshToken: "refresh-damar-active"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy-stale": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(account.account.email == "aisy.ahkusmawati938@gmail.com")
         let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(auth.tokens.refreshToken == "refresh-aisy-stale")
+        #expect(auth.tokens.refreshToken == "refresh-aisy-new")
     }
 
-    @Test func sameActiveRefreshTokenDoesNotTriggerRefresh() async throws {
+    @Test func sameActiveRefreshTokenStillRefreshesStoredAuth() async throws {
         let fixture = try AuthSwitchPreflightFixture()
         try fixture.writeRegistry(
             activeAccountKey: nil,
@@ -745,7 +925,8 @@ struct AuthSwitchPreflightValidatorTests {
             email: "aisy.ahkusmawati938@gmail.com",
             userID: "user_aisy",
             accountID: "acct_aisy",
-            refreshToken: "refresh-aisy-stale"
+            refreshToken: "refresh-aisy-stale",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
         )
         try fixture.writeActiveAuth(
             email: "aisy.ahkusmawati938@gmail.com",
@@ -753,13 +934,28 @@ struct AuthSwitchPreflightValidatorTests {
             accountID: "acct_aisy",
             refreshToken: "refresh-aisy-stale"
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy-stale": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy.ahkusmawati938@gmail.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "aisy")
 
         #expect(account.account.email == "aisy.ahkusmawati938@gmail.com")
         let auth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
-        #expect(auth.tokens.refreshToken == "refresh-aisy-stale")
+        #expect(auth.tokens.refreshToken == "refresh-aisy-new")
     }
 
     @Test func ambiguousQueryRequiresMoreSpecificSelector() async throws {
@@ -794,13 +990,30 @@ struct AuthSwitchPreflightValidatorTests {
             email: "sultan1819@example.com",
             userID: "user_sultan",
             accountID: "acct_sultan",
-            refreshToken: "refresh-sultan"
+            refreshToken: "refresh-sultan",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
         )
-        let validator = AuthSwitchPreflightValidator(homeDirectory: fixture.homeDirectory)
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-sultan": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "sultan1819@example.com",
+                    userID: "user_sultan",
+                    accountID: "acct_sultan",
+                    accessToken: "access-sultan-new",
+                    refreshToken: "refresh-sultan-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
 
         let account = try await validator.prepareForSwitch(query: "1819")
 
         #expect(account.account.email == "sultan1819@example.com")
+        #expect(await refresher.requests == ["refresh-sultan"])
     }
 
     @Test func heldAccountLockStopsBeforeSwitchAndKeepsStoredAuthUnchanged() async throws {
@@ -833,9 +1046,415 @@ struct AuthSwitchPreflightValidatorTests {
         #expect(auth.tokens.refreshToken == "refresh-aisy")
         heldLock.release()
     }
+
+    @Test func freshAccessTokenDoesNotRefreshAndLogsSafeSwitchDetails() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-aisy",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now.addingTimeInterval(3600))
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(responses: [:])
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        let result = try await validator.prepareForSwitch(query: "aisy") { event in
+            await logs.append(event)
+        }
+
+        #expect(result.status == .readyWithoutRefresh)
+        #expect(await refresher.requests.isEmpty)
+        let storedAuth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
+        #expect(storedAuth.tokens.refreshToken == "refresh-aisy")
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: selected aisy@example.com."))
+        #expect(lines.contains { $0.hasPrefix("Switch check: saved file ") })
+        #expect(lines.contains("Switch check: saved file identity matches registry."))
+        #expect(lines.contains("Switch check: saved access token is fresh enough; no OpenAI refresh needed before switch."))
+        #expect(lines.contains { $0.hasPrefix("Switch check: asking OpenAI to validate refresh token ") } == false)
+        #expect(lines.joined(separator: "\n").contains("refresh-aisy") == false)
+    }
+
+    @Test func reusedRefreshTokenWithoutNewerActiveAuthLogsLikelyStaleOrOtherProcess() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-aisy",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .failure(.reloginRequired(.reused))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        do {
+            _ = try await validator.prepareForSwitch(query: "aisy") { event in
+                await logs.append(event)
+            }
+            Issue.record("Expected reused refresh token to block the switch.")
+        } catch let error as AuthSwitchPreflightError {
+            #expect(error == .reloginRequired(email: "aisy@example.com", reason: .reused))
+        }
+
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: OpenAI says this refresh token was already used."))
+        #expect(lines.contains("Switch check: no newer matching active auth was found. Another Codex or codex-auth process may have refreshed this token first, or the saved account file may be stale."))
+        #expect(lines.joined(separator: "\n").contains("refresh-aisy") == false)
+    }
+
+    @Test func newerActiveAuthLogsStaleSavedCopyAndRepairRefresh() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-stale",
+            lastRefresh: "2026-05-17T05:00:00Z"
+        )
+        try fixture.writeActiveAuth(
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-active",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
+            lastRefresh: "2026-05-17T06:30:00Z"
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-active": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy@example.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-repaired",
+                    refreshToken: "refresh-repaired"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        _ = try await validator.prepareForSwitch(query: "aisy") { event in
+            await logs.append(event)
+        }
+
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: active auth ~/.codex/auth.json is newer than saved copy."))
+        #expect(lines.contains("Switch check: saved account file was stale; copied newer active auth into saved account file."))
+        #expect(await refresher.requests == ["refresh-active"])
+        let storedAuth = try fixture.readStoredAuth(accountKey: "user_aisy::acct_aisy")
+        #expect(storedAuth.tokens.refreshToken == "refresh-repaired")
+    }
+
+    @Test func reusedRefreshTokenWithNewerActiveAuthLogsRepairAttempt() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-stale",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
+            lastRefresh: "2026-05-17T05:00:00Z"
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-stale": .failure(.reloginRequired(.reused)),
+                "refresh-active": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy@example.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-repaired",
+                    refreshToken: "refresh-repaired"
+                ))
+            ],
+            beforeResponse: { refreshToken in
+                guard refreshToken == "refresh-stale" else {
+                    return
+                }
+                try? fixture.writeActiveAuth(
+                    email: "aisy@example.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    refreshToken: "refresh-active",
+                    accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now),
+                    lastRefresh: "2026-05-17T06:30:00Z"
+                )
+            }
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        let result = try await validator.prepareForSwitch(query: "aisy") { event in
+            await logs.append(event)
+        }
+
+        #expect(result.status == .refreshed)
+        #expect(await refresher.requests == ["refresh-stale", "refresh-active"])
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: OpenAI says this refresh token was already used."))
+        #expect(lines.contains("Switch check: found newer matching active auth; trying it as repair."))
+        #expect(lines.contains("Switch check: saved new token into saved account file."))
+        #expect(lines.joined(separator: "\n").contains("refresh-stale") == false)
+        #expect(lines.joined(separator: "\n").contains("refresh-active") == false)
+        #expect(lines.joined(separator: "\n").contains("refresh-repaired") == false)
+    }
+
+    @Test func staleSavedCopySaveFailureLogsAndBlocksSwitch() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-stale",
+            lastRefresh: "2026-05-17T05:00:00Z"
+        )
+        try fixture.writeActiveAuth(
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-active",
+            lastRefresh: "2026-05-17T06:30:00Z"
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-active": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy@example.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-repaired",
+                    refreshToken: "refresh-repaired"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            writeAuthFile: { _, url in
+                throw TestAuthFileWriteError(path: url.path)
+            },
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        do {
+            _ = try await validator.prepareForSwitch(query: "aisy") { event in
+                await logs.append(event)
+            }
+            Issue.record("Expected stale saved-copy write failure to block the switch.")
+        } catch let error as AuthSwitchPreflightError {
+            guard case .transient(email: "aisy@example.com", _) = error else {
+                Issue.record("Wrong error: \(error)")
+                return
+            }
+        }
+
+        #expect(await refresher.requests.isEmpty)
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: active auth ~/.codex/auth.json is newer than saved copy."))
+        #expect(lines.contains { $0.hasPrefix("Switch check: failed to copy newer active auth into ") })
+        #expect(lines.contains("Switch check: saved account file is still stale. Switch cannot continue safely."))
+        #expect(lines.joined(separator: "\n").contains("refresh-active") == false)
+    }
+
+    @Test func storedAuthIdentityMismatchLogsWrongFileAndBlocksSwitch() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "damar@example.com",
+            userID: "user_damar",
+            accountID: "acct_damar",
+            refreshToken: "refresh-wrong-file"
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(responses: [:])
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        do {
+            _ = try await validator.prepareForSwitch(query: "aisy") { event in
+                await logs.append(event)
+            }
+            Issue.record("Expected mismatched saved auth file to block the switch.")
+        } catch let error as AuthSwitchPreflightError {
+            #expect(error == .storedAuthIdentityMismatch(email: "aisy@example.com"))
+        }
+
+        #expect(await refresher.requests.isEmpty)
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: saved file identity does not match registry."))
+        #expect(lines.contains("Switch check: Switch may be reading the wrong saved account file."))
+        #expect(lines.joined(separator: "\n").contains("refresh-wrong-file") == false)
+    }
+
+    @Test func storedAuthIdentityMismatchWithMatchingActiveAuthStillBlocksSwitch() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "damar@example.com",
+            userID: "user_damar",
+            accountID: "acct_damar",
+            refreshToken: "refresh-wrong-file"
+        )
+        try fixture.writeActiveAuth(
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-active",
+            lastRefresh: "2026-05-17T06:30:00Z"
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(responses: [:])
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        do {
+            _ = try await validator.prepareForSwitch(query: "aisy") { event in
+                await logs.append(event)
+            }
+            Issue.record("Expected mismatched saved auth file to block the switch.")
+        } catch let error as AuthSwitchPreflightError {
+            #expect(error == .storedAuthIdentityMismatch(email: "aisy@example.com"))
+        }
+
+        #expect(await refresher.requests.isEmpty)
+        let lines = await logs.lines()
+        #expect(lines.contains("Switch check: saved file identity does not match registry."))
+        #expect(lines.contains("Switch check: Switch may be reading the wrong saved account file."))
+        #expect(lines.contains("Switch check: active auth ~/.codex/auth.json is newer than saved copy.") == false)
+    }
+
+    @Test func saveFailureAfterSuccessfulRefreshLogsLocalFileProblem() async throws {
+        let fixture = try AuthSwitchPreflightFixture()
+        try fixture.writeRegistry(
+            activeAccountKey: nil,
+            accounts: [
+                .init(accountKey: "user_aisy::acct_aisy", email: "aisy@example.com", alias: "aisy", plan: "plus")
+            ]
+        )
+        try fixture.writeStoredAuth(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            userID: "user_aisy",
+            accountID: "acct_aisy",
+            refreshToken: "refresh-aisy",
+            accessToken: AuthSwitchPreflightFixture.accessJWT(expiration: now)
+        )
+        let refresher = PreflightFakeOAuthTokenRefresher(
+            responses: [
+                "refresh-aisy": .success(AuthSwitchPreflightFixture.refreshResponse(
+                    email: "aisy@example.com",
+                    userID: "user_aisy",
+                    accountID: "acct_aisy",
+                    accessToken: "access-aisy-new",
+                    refreshToken: "refresh-aisy-new"
+                ))
+            ]
+        )
+        let validator = AuthSwitchPreflightValidator(
+            homeDirectory: fixture.homeDirectory,
+            refresher: refresher,
+            writeAuthFile: { _, url in
+                throw TestAuthFileWriteError(path: url.path)
+            },
+            now: { now }
+        )
+        let logs = SwitchDebugLogCollector()
+
+        do {
+            _ = try await validator.prepareForSwitch(query: "aisy") { event in
+                await logs.append(event)
+            }
+            Issue.record("Expected local save failure to block the switch.")
+        } catch let error as AuthSwitchPreflightError {
+            guard case .transient(email: "aisy@example.com", _) = error else {
+                Issue.record("Wrong error: \(error)")
+                return
+            }
+        }
+
+        let lines = await logs.lines()
+        #expect(lines.contains { $0.hasPrefix("Switch check: failed to save the new refresh token into ") })
+        #expect(lines.contains("Switch check: OpenAI already returned a rotated token, so the old local refresh token may now be already used. Click Login if the next check says already used."))
+        #expect(lines.joined(separator: "\n").contains("refresh-aisy-new") == false)
+    }
 }
 
-private struct AuthSwitchPreflightFixture {
+private struct AuthSwitchPreflightFixture: Sendable {
     let homeDirectory: URL
 
     init() throws {
@@ -943,6 +1562,20 @@ private struct AuthSwitchPreflightFixture {
         "\(base64URL(["alg": "none"])).\(base64URL(["exp": expiration.timeIntervalSince1970])).signature"
     }
 
+    static func refreshResponse(
+        email: String,
+        userID: String,
+        accountID: String,
+        accessToken: String,
+        refreshToken: String
+    ) -> OAuthRefreshResponse {
+        OAuthRefreshResponse(
+            idToken: jwt(email: email, userID: userID, accountID: accountID),
+            accessToken: accessToken,
+            refreshToken: refreshToken
+        )
+    }
+
     static let freshAccessJWT = accessJWT(expiration: Date(timeIntervalSince1970: 2_000_000_000))
 
     private func authJSON(
@@ -1024,14 +1657,20 @@ private struct AuthSwitchPreflightFixture {
 
 private actor PreflightFakeOAuthTokenRefresher: OAuthTokenRefreshing {
     private let responses: [String: Result<OAuthRefreshResponse, OAuthRefreshFailure>]
+    private let beforeResponse: @Sendable (String) async -> Void
     private(set) var requests: [String] = []
 
-    init(responses: [String: Result<OAuthRefreshResponse, OAuthRefreshFailure>]) {
+    init(
+        responses: [String: Result<OAuthRefreshResponse, OAuthRefreshFailure>],
+        beforeResponse: @escaping @Sendable (String) async -> Void = { _ in }
+    ) {
         self.responses = responses
+        self.beforeResponse = beforeResponse
     }
 
     func refresh(refreshToken: String) async throws -> OAuthRefreshResponse {
         requests.append(refreshToken)
+        await beforeResponse(refreshToken)
         switch responses[refreshToken] {
         case .success(let response):
             return response
@@ -1040,5 +1679,25 @@ private actor PreflightFakeOAuthTokenRefresher: OAuthTokenRefreshing {
         case nil:
             throw OAuthRefreshFailure.transient("missing fake response")
         }
+    }
+}
+
+private actor SwitchDebugLogCollector {
+    private var collectedLines: [String] = []
+
+    func append(_ event: AuthAccountRefreshDebugEvent) {
+        collectedLines.append(event.transcriptLine)
+    }
+
+    func lines() -> [String] {
+        collectedLines
+    }
+}
+
+private struct TestAuthFileWriteError: LocalizedError {
+    var path: String
+
+    var errorDescription: String? {
+        "test writer could not save \(path)"
     }
 }

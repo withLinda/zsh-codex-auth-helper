@@ -1,7 +1,7 @@
 ---
 title: "Learnings"
 description: "Repo-specific lessons for future agents working on zsh-codexauth-helper."
-last_updated: "2026-06-02"
+last_updated: "2026-06-03"
 ---
 
 # Learnings
@@ -58,7 +58,7 @@ Template:
 
 - 2026-06-02: Symptom: switch appeared successful even for an account that needed re-login.
   Root cause: upstream `codex-auth switch <query>` is local-only; it copies a saved snapshot and does not ask OpenAI whether the refresh token still works.
-  Guardrail: switch preflight must validate or refresh before running `codex-auth switch` when Codex would need renewal.
+  Guardrail: Switch preflight must check the selected saved login before running `codex-auth switch`. For OAuth accounts, refresh only when Codex would need renewal now. API-key accounts can skip this because they do not use OAuth refresh tokens.
 
 - 2026-06-02: Symptom: preflight only checked that a refresh-token string existed.
   Root cause: local presence is not the same as server acceptance; expired, reused, or revoked refresh tokens still exist on disk.
@@ -66,25 +66,33 @@ Template:
 
 - 2026-06-02: Symptom: it was easy for Health Check and Switch to drift.
   Root cause: refresh, locking, repair, validation, and persistence logic had separate owners.
-  Guardrail: centralize account-file locking, freshest matching active snapshot sync, conditional refresh, stale-token repair, response validation, and atomic persistence in `AuthAccountRefreshCoordinator`.
+  Guardrail: centralize account-file locking, freshest matching active snapshot sync, stale-token repair, response validation, and atomic persistence in `AuthAccountRefreshCoordinator`.
 
-- 2026-06-02: Symptom: official Codex refresh behavior needed exact matching.
-  Root cause: the timing rules are specific: refresh when access-token JWT expiry is `<= now + 5 minutes`; if expiry cannot be read, use `last_refresh < now - 8 days`.
-  Guardrail: preserve the exact boundary behavior in tests, especially the strict eight-day fallback comparison.
+- 2026-06-02: Symptom: old Switch preflight tried to match official Codex refresh timing.
+  Root cause: the timing rules say when Codex would refresh later. They do not prove whether the saved refresh token is already expired, already used, or revoked now.
+  Guardrail: keep the five-minute access-token window and strict eight-day `last_refresh` fallback for Switch. This avoids spending one-use refresh tokens on normal switches. Health Check can still always validate every saved OAuth account.
 
 - 2026-06-02: Symptom: known permanent refresh failures can come back as HTTP `400`, not only `401`.
   Root cause: official Codex treats known refresh-token codes as permanent regardless of the non-success status.
   Guardrail: classify `refresh_token_expired`, `refresh_token_reused`, and `refresh_token_invalidated` as re-login required before falling back to transient HTTP handling.
 
+- 2026-06-03: Symptom: Switch did not explain repeated `already used` results or stale saved-account files.
+  Root cause: Switch had no safe debug event stream, and refresh-token checks could hide whether active auth was newer, the saved account file was wrong, saving failed, or another process used the token first.
+  Guardrail: Switch must print safe `Switch check:` lines through `AuthAccountRefreshCoordinator`. Log paths and short token fingerprints only. Never log full tokens.
+
+- 2026-06-03: Symptom: Switch blocked normal account changes with `active auth ~/.codex/auth.json does not match selected account` followed by `refresh token was already used`.
+  Root cause: Switch was asking OpenAI to refresh the selected saved account every time. Refresh tokens are one-use, so this spent or rejected tokens before `codex-auth switch` could do its own safe active-account sync.
+  Guardrail: Switch should treat a different active auth file as normal while switching. It should refresh only when the selected saved access token is expired, within five minutes of expiry, or unreadable with `last_refresh` older than eight days. Use Health Check for strict validation of all saved OAuth accounts.
+
 ## Testing Lessons
 
-- 2026-06-02: Symptom: tests could accidentally try real OAuth refreshes if fixture access tokens looked stale.
-  Root cause: unreadable fake access tokens trigger the eight-day fallback, and old `last_refresh` values can require refresh.
-  Guardrail: default switch-preflight fixtures to a parseable fresh access-token JWT, and inject fake refreshers for all refresh-path tests.
+- 2026-06-02: Symptom: tests could accidentally try real OAuth refreshes.
+  Root cause: Switch can refresh OAuth accounts when conditional renewal is needed, so any OAuth refresh-path test without a fake refresher can fall through to the live refresher.
+  Guardrail: inject fake `OAuthTokenRefreshing` implementations for all Switch OAuth success and failure tests. Never use saved personal auth files for verification.
 
 - 2026-06-02: Symptom: a successful local switch test could hide a broken server-side login.
   Root cause: a local snapshot can be copied even when the refresh token is dead.
-  Guardrail: include tests for fresh local success, near-expiry refresh success, permanent re-login failures, transient failures, invalid refresh responses, active-token repair, different-account rejection, API-key skip, and lock behavior.
+  Guardrail: include tests for conditional OAuth Switch, permanent re-login failures when refresh is needed, transient failures, invalid refresh responses, stale active-auth repair, wrong-file identity blocks, save failures, safe debug logs, API-key skip, and lock behavior.
 
 - 2026-06-02: Symptom: verification needed to avoid touching personal saved accounts.
   Root cause: live OAuth refreshes rotate real tokens.
@@ -93,8 +101,8 @@ Template:
 ## Documentation Lessons
 
 - 2026-06-02: Symptom: old wording said normal switch did not refresh OAuth tokens.
-  Root cause: after the fix, switch usually stays local, but it can refresh when Codex would need renewal now.
-  Guardrail: README and transcript text must say conditional refresh, not "always local" and not "always refreshed".
+  Root cause: Switch behavior is conditional: it refreshes only when Codex would need renewal now, while Health Check always validates saved OAuth accounts.
+  Guardrail: README and transcript text must say OAuth Switch is conditional. Do not say "always local" or "always refreshed".
 
 - 2026-06-02: Symptom: re-login guidance could overstate the need for Save / Update Login.
   Root cause: the isolated `codex-auth login` flow saves the account itself; Save / Update Login is mainly for aliases or chosen auth files.

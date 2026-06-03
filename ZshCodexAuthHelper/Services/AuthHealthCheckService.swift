@@ -7,6 +7,7 @@ enum AuthHealthCheckStatus: Equatable, Sendable {
     case missingRefreshToken
     case busy
     case reloginRequired(OAuthRefreshFailureReason)
+    case storedAuthIdentityMismatch
     case accountMismatch
     case invalidRefreshResponse
     case transient(String)
@@ -15,7 +16,7 @@ enum AuthHealthCheckStatus: Equatable, Sendable {
         switch self {
         case .refreshed, .skippedAPIKey:
             return false
-        case .missingStoredAuth, .missingRefreshToken, .busy, .reloginRequired, .accountMismatch, .invalidRefreshResponse, .transient:
+        case .missingStoredAuth, .missingRefreshToken, .busy, .reloginRequired, .storedAuthIdentityMismatch, .accountMismatch, .invalidRefreshResponse, .transient:
             return true
         }
     }
@@ -128,6 +129,9 @@ struct AuthHealthCheckService {
         fileManager: FileManager = .default,
         lock: AuthAccountFileLock? = nil,
         refresher: OAuthTokenRefreshing = URLSessionOAuthTokenRefresher(),
+        writeAuthFile: @escaping AuthFileWriter = { authFile, url in
+            try authFile.write(to: url)
+        },
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = AuthAccountStore(homeDirectory: homeDirectory, fileManager: fileManager)
@@ -136,6 +140,7 @@ struct AuthHealthCheckService {
             fileManager: fileManager,
             lock: lock,
             refresher: refresher,
+            writeAuthFile: writeAuthFile,
             now: now
         )
     }
@@ -181,12 +186,12 @@ struct AuthHealthCheckService {
         do {
             let outcome = try await coordinator.prepare(record: record, registry: registry, policy: .always)
             switch outcome {
+            case .readyWithoutRefresh:
+                return result(record: record, status: .transient("Health Check skipped refresh unexpectedly."))
             case .refreshed:
                 return result(record: record, status: .refreshed)
             case .skippedAPIKey:
                 return result(record: record, status: .skippedAPIKey)
-            case .readyWithoutRefresh:
-                return result(record: record, status: .transient("Login check did not refresh the saved account."))
             }
         } catch let error as AuthAccountRefreshError {
             switch error {
@@ -198,6 +203,8 @@ struct AuthHealthCheckService {
                 return result(record: record, status: .busy)
             case .reloginRequired(let reason):
                 return result(record: record, status: .reloginRequired(reason))
+            case .storedAuthIdentityMismatch:
+                return result(record: record, status: .storedAuthIdentityMismatch)
             case .accountMismatch:
                 return result(record: record, status: .accountMismatch)
             case .invalidRefreshResponse:
@@ -244,6 +251,8 @@ private extension AuthHealthCheckStatus {
             return "skipped; another refresh is already checking it"
         case .reloginRequired(let reason):
             return "needs login; refresh token was \(reason.displayName)"
+        case .storedAuthIdentityMismatch:
+            return "failed; saved auth file does not match registry"
         case .accountMismatch:
             return "failed; refresh returned a different account"
         case .invalidRefreshResponse:

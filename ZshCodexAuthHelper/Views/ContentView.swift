@@ -212,14 +212,19 @@ struct ContentView: View {
         transcriptStore.appendSystemLine("Checking saved login before switching...")
 
         do {
-            let result = try await switchPreflightValidator.prepareForSwitch(query: query)
-            transcriptStore.appendSystemLine(result.transcriptLine)
+            _ = try await switchPreflightValidator.prepareForSwitch(query: query) { event in
+                await MainActor.run {
+                    transcriptStore.appendSystemLine(event.transcriptLine)
+                }
+            }
             let command = try commandFactory.switchAccount(query: query)
+            transcriptStore.appendSystemLine("Switch check passed. Running \(command.displayCommand).")
             isCheckingSwitch = false
             run(command)
         } catch {
             isCheckingSwitch = false
             transcriptStore.appendSystemLine(error.localizedDescription)
+            transcriptStore.appendSystemLine("Switch blocked. No account was switched.")
         }
     }
 

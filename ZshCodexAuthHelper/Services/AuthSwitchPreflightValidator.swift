@@ -8,6 +8,7 @@ enum AuthSwitchPreflightError: LocalizedError, Equatable {
     case missingRefreshToken(email: String)
     case accountBusy(email: String)
     case reloginRequired(email: String, reason: OAuthRefreshFailureReason)
+    case storedAuthIdentityMismatch(email: String)
     case accountMismatch(email: String)
     case invalidRefreshResponse(email: String)
     case transient(email: String?, message: String)
@@ -28,6 +29,8 @@ enum AuthSwitchPreflightError: LocalizedError, Equatable {
             return "Saved login for \(email) is already being checked. Try again after the current check finishes."
         case .reloginRequired(let email, let reason):
             return "Saved login for \(email) cannot refresh because its refresh token was \(reason.displayName). Click Login and finish browser login, then switch again. Use Save / Update Login only if you want to set or change an alias."
+        case .storedAuthIdentityMismatch(let email):
+            return "Saved auth file for \(email) does not match the selected account. Switch may be reading the wrong saved account file. No account was switched."
         case .accountMismatch(let email):
             return "Could not check login for \(email): refresh returned a different account. No account was switched."
         case .invalidRefreshResponse(let email):
@@ -72,6 +75,9 @@ struct AuthSwitchPreflightValidator {
         fileManager: FileManager = .default,
         lock: AuthAccountFileLock? = nil,
         refresher: OAuthTokenRefreshing = URLSessionOAuthTokenRefresher(),
+        writeAuthFile: @escaping AuthFileWriter = { authFile, url in
+            try authFile.write(to: url)
+        },
         now: @escaping @Sendable () -> Date = { Date() }
     ) {
         self.store = AuthAccountStore(homeDirectory: homeDirectory, fileManager: fileManager)
@@ -80,11 +86,15 @@ struct AuthSwitchPreflightValidator {
             fileManager: fileManager,
             lock: lock,
             refresher: refresher,
+            writeAuthFile: writeAuthFile,
             now: now
         )
     }
 
-    func prepareForSwitch(query: String) async throws -> AuthSwitchPreflightResult {
+    func prepareForSwitch(
+        query: String,
+        onDebug: AuthAccountRefreshDebugSink? = nil
+    ) async throws -> AuthSwitchPreflightResult {
         let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         let registry = try readRegistry()
         let record = try resolveAccount(query: trimmedQuery, registry: registry)
@@ -98,7 +108,8 @@ struct AuthSwitchPreflightValidator {
             let status = try await coordinator.prepare(
                 record: record,
                 registry: registry,
-                policy: .whenCodexWouldRefresh
+                policy: .whenCodexWouldRefresh,
+                onDebug: onDebug
             )
             return AuthSwitchPreflightResult(account: account, status: status)
         } catch let error as AuthAccountRefreshError {
@@ -118,6 +129,8 @@ struct AuthSwitchPreflightValidator {
             return .accountBusy(email: email)
         case .reloginRequired(let reason):
             return .reloginRequired(email: email, reason: reason)
+        case .storedAuthIdentityMismatch:
+            return .storedAuthIdentityMismatch(email: email)
         case .accountMismatch:
             return .accountMismatch(email: email)
         case .invalidRefreshResponse:
