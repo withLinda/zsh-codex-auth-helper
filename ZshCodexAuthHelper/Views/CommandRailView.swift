@@ -9,14 +9,12 @@ struct CommandRailView: View {
     let isRunning: Bool
     let runLogin: () -> Void
     let runImport: () -> Void
-    let runSwitch: () -> Void
     let runRestart: () -> Void
     let runOpenCodex: () -> Void
     let runForceCloseCodex: () -> Void
     let runOpenBlankIncognito: () -> Void
-    let runList: () -> Void
+    let runUpdateCodexAuth: () -> Void
     let runHealthCheck: () -> Void
-    let requestRemove: () -> Void
 
     private var canImport: Bool {
         authFilePath.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -75,28 +73,14 @@ struct CommandRailView: View {
                     .foregroundStyle(ThemeTokens.Colors.primaryText)
 
                 CommandButton(title: "Login", systemImage: "person.crop.circle.badge.plus", action: runLogin)
-                CommandButton(title: "Switch Account...", systemImage: "arrow.triangle.2.circlepath", action: runSwitch)
                 CommandButton(title: "Restart Codex", systemImage: "power", tint: ThemeTokens.Colors.warning, action: runRestart)
                 codexAppControlButton
-                CommandButton(title: "List Accounts", systemImage: "list.bullet.rectangle", action: runList)
+                CommandButton(title: "Update codex-auth", systemImage: "arrow.down.circle", action: runUpdateCodexAuth)
                 CommandButton(title: "Health Check", systemImage: "checkmark.shield", tint: ThemeTokens.Colors.success, action: runHealthCheck)
             }
             .disabled(isRunning)
 
             Spacer(minLength: ThemeTokens.Spacing.group)
-
-            VStack(alignment: .leading, spacing: ThemeTokens.Spacing.normal) {
-                Divider()
-                    .overlay(ThemeTokens.Colors.border)
-
-                CommandButton(
-                    title: "Remove Account",
-                    systemImage: "trash",
-                    tint: ThemeTokens.Colors.destructive,
-                    action: requestRemove
-                )
-                .disabled(isRunning)
-            }
         }
         .padding(ThemeTokens.Spacing.section)
         .frame(maxHeight: .infinity, alignment: .topLeading)

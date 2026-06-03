@@ -2,20 +2,23 @@ import Foundation
 
 enum CommandFactoryError: LocalizedError, Equatable {
     case missingExecutable(String)
+    case missingNPM
     case missingAuthFilePath
     case missingSwitchQuery
-    case missingRemoveAlias
+    case missingRemoveSelector
 
     var errorDescription: String? {
         switch self {
         case .missingExecutable(let name):
             return "Could not find \(name)."
+        case .missingNPM:
+            return "Could not find npm. Install Node.js and npm, then reopen the app."
         case .missingAuthFilePath:
             return "Add an auth file path before saving."
         case .missingSwitchQuery:
-            return "Add an alias after codex-auth switch before running."
-        case .missingRemoveAlias:
-            return "Add an alias after codex-auth remove before running."
+            return "Add an account selector after codex-auth switch before running."
+        case .missingRemoveSelector:
+            return "Add an account selector after codex-auth remove before running."
         }
     }
 }
@@ -23,13 +26,16 @@ enum CommandFactoryError: LocalizedError, Equatable {
 struct CodexCommandFactory {
     private let resolver: ExecutableResolver
     private let homeDirectory: URL
+    private let codexAuthToolManager: CodexAuthToolManager
 
     init(
         resolver: ExecutableResolver = .init(),
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
+        codexAuthToolManager: CodexAuthToolManager = .live()
     ) {
         self.resolver = resolver
         self.homeDirectory = homeDirectory
+        self.codexAuthToolManager = codexAuthToolManager
     }
 
     static func live() -> CodexCommandFactory {
@@ -38,6 +44,30 @@ struct CodexCommandFactory {
 
     var defaultAuthFilePath: String {
         homeDirectory.appendingPathComponent(".codex/auth.json").path
+    }
+
+    func updateCodexAuth(channel: CodexAuthReleaseChannel) throws -> CommandDefinition {
+        guard let executable = resolver.resolve("npm") else {
+            throw CommandFactoryError.missingNPM
+        }
+
+        let arguments = [
+            "install",
+            "--global",
+            "--prefix",
+            codexAuthToolManager.toolRoot.path,
+            channel.packageSpec
+        ]
+
+        return CommandDefinition(
+            id: "update-codex-auth",
+            title: "Update codex-auth",
+            systemImage: "arrow.down.circle",
+            executable: executable,
+            arguments: arguments,
+            environment: codexAuthEnvironment(),
+            displayCommand: ShellQuoting.displayCommand(executable: "npm", arguments: arguments)
+        )
     }
 
     func login(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) throws -> CommandDefinition {
@@ -114,14 +144,14 @@ struct CodexCommandFactory {
         )
     }
 
-    func remove(alias: String) throws -> CommandDefinition {
-        let trimmedAlias = alias.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard trimmedAlias.isEmpty == false else {
-            throw CommandFactoryError.missingRemoveAlias
+    func remove(query: String) throws -> CommandDefinition {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.isEmpty == false else {
+            throw CommandFactoryError.missingRemoveSelector
         }
 
         let executable = try codexAuthExecutable()
-        let arguments = ["remove", trimmedAlias]
+        let arguments = ["remove", trimmedQuery]
 
         return CommandDefinition(
             id: "remove",
@@ -306,18 +336,12 @@ struct CodexCommandFactory {
     }
 
     private func codexAuthPath(prepending directory: String? = nil) -> String {
-        let basePath = resolver.pathByPrepending("/opt/homebrew/bin")
-        guard let directory = directory?.trimmedNonEmpty else {
-            return basePath
+        var directories: [String] = []
+        if let directory = directory?.trimmedNonEmpty {
+            directories.append(directory)
         }
-
-        let parts = basePath.split(separator: ":").map(String.init)
-        if parts.contains(directory) {
-            return basePath
-        }
-        if basePath.isEmpty {
-            return directory
-        }
-        return "\(directory):\(basePath)"
+        directories.append(codexAuthToolManager.managedBinDirectory.path)
+        directories.append("/opt/homebrew/bin")
+        return resolver.pathByPrepending(directories)
     }
 }

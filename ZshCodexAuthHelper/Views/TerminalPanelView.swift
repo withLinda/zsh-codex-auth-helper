@@ -185,7 +185,7 @@ struct TerminalPanelView: View {
             return "Type input for the running command"
         }
 
-        return "Use Switch or Remove, then add an alias"
+        return "Type switch/remove command"
     }
 
     private var canSendInput: Bool {

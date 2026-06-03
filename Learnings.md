@@ -1,7 +1,7 @@
 ---
 title: "Learnings"
 description: "Repo-specific lessons for future agents working on zsh-codexauth-helper."
-last_updated: "2026-06-03"
+last_updated: "2026-06-04"
 ---
 
 # Learnings
@@ -13,6 +13,7 @@ This file captures practical lessons from debugging, tool use, and implementatio
 - [How To Update This File](#how-to-update-this-file)
 - [Tooling Lessons](#tooling-lessons)
 - [Auth Refresh And Switch Lessons](#auth-refresh-and-switch-lessons)
+- [UI Lessons](#ui-lessons)
 - [Testing Lessons](#testing-lessons)
 - [Documentation Lessons](#documentation-lessons)
 
@@ -54,6 +55,10 @@ Template:
   Root cause: nested `#require(...)` calls inside another `#require(...)` can trip macro expansion.
   Guardrail: unwrap optional values in separate steps or use safe force unwraps in controlled test fixture setup.
 
+- 2026-06-04: Symptom: full `xcodebuild test` restarted the test host and reported crashes in existing async auth tests, including Swift Testing `#expect` macro lines and `outlined destroy of AuthSwitchPreflightResult`.
+  Root cause: the unit-test target is app-hosted, and Swift Testing 1902 on macOS 26.5 can crash these async auth tests inside the app host. Blank `TEST_HOST` does not work in this app target because the test bundle then loses app symbols at link time.
+  Guardrail: inspect the `.xcresult` and `~/Library/Logs/DiagnosticReports/ZshCodexAuthHelper-*.ips` before blaming a new UI change. For account-list or command-factory work, also run focused suites such as `xcodebuild test -project ZshCodexAuthHelper.xcodeproj -scheme ZshCodexAuthHelper -destination 'platform=macOS' -only-testing:ZshCodexAuthHelperTests/AccountListStoreTests -only-testing:ZshCodexAuthHelperTests/CodexCommandFactoryTests`.
+
 ## Auth Refresh And Switch Lessons
 
 - 2026-06-02: Symptom: switch appeared successful even for an account that needed re-login.
@@ -83,6 +88,12 @@ Template:
 - 2026-06-03: Symptom: Switch blocked normal account changes with `active auth ~/.codex/auth.json does not match selected account` followed by `refresh token was already used`.
   Root cause: Switch was asking OpenAI to refresh the selected saved account every time. Refresh tokens are one-use, so this spent or rejected tokens before `codex-auth switch` could do its own safe active-account sync.
   Guardrail: Switch should treat a different active auth file as normal while switching. It should refresh only when the selected saved access token is expired, within five minutes of expiry, or unreadable with `last_refresh` older than eight days. Use Health Check for strict validation of all saved OAuth accounts.
+
+## UI Lessons
+
+- 2026-06-04: Symptom: the account row looked correct, but automation could not press the row-level Remove button reliably.
+  Root cause: the row used `.accessibilityElement(children: .combine)`, so SwiftUI exposed the whole row as one accessibility element and hid the real Switch and Remove buttons inside it.
+  Guardrail: do not combine a SwiftUI row when it contains real buttons. Keep row buttons as separate accessibility elements, then verify with `take_ax_snapshot` and a native alert Cancel check.
 
 ## Testing Lessons
 

@@ -2,16 +2,19 @@ import SwiftUI
 
 struct ContentView: View {
     @AppStorage(CodexResourceSettings.userDefaultsKey) private var codexResourceDirectory = CodexResourceSettings.defaultDirectory
+    @AppStorage(CodexAuthToolSettings.releaseChannelKey) private var codexAuthReleaseChannelRaw = CodexAuthReleaseChannel.stable.rawValue
 
     @StateObject private var transcriptStore = TerminalTranscriptStore()
     @StateObject private var runner = CommandRunner()
     @StateObject private var authSessionMonitor = AuthSessionMonitor()
     @StateObject private var codexAppMonitor = CodexAppMonitor()
+    @StateObject private var accountListStore = AccountListStore()
 
     private let commandFactory: CodexCommandFactory
     private let switchPreflightValidator: AuthSwitchPreflightValidator
     private let healthCheckService: AuthHealthCheckService
     private let linkOpener: ChromeIncognitoLinkOpener
+    private let codexAuthToolManager: CodexAuthToolManager
 
     @State private var authFilePath: String
     @State private var alias: String
@@ -19,21 +22,28 @@ struct ContentView: View {
     @State private var terminalInputFocusRequest = 0
     @State private var isCheckingSwitch = false
     @State private var isRunningHealthCheck = false
+    @State private var pendingAccountRemoval: AccountListItem?
 
     private var isBusy: Bool {
         runner.isRunning || isCheckingSwitch || isRunningHealthCheck
+    }
+
+    private var selectedCodexAuthReleaseChannel: CodexAuthReleaseChannel {
+        CodexAuthReleaseChannel(storedValue: codexAuthReleaseChannelRaw)
     }
 
     init(
         commandFactory: CodexCommandFactory = .live(),
         switchPreflightValidator: AuthSwitchPreflightValidator = AuthSwitchPreflightValidator(),
         healthCheckService: AuthHealthCheckService = AuthHealthCheckService(),
-        linkOpener: ChromeIncognitoLinkOpener = ChromeIncognitoLinkOpener()
+        linkOpener: ChromeIncognitoLinkOpener = ChromeIncognitoLinkOpener(),
+        codexAuthToolManager: CodexAuthToolManager = .live()
     ) {
         self.commandFactory = commandFactory
         self.switchPreflightValidator = switchPreflightValidator
         self.healthCheckService = healthCheckService
         self.linkOpener = linkOpener
+        self.codexAuthToolManager = codexAuthToolManager
         _authFilePath = State(initialValue: commandFactory.defaultAuthFilePath)
         _alias = State(initialValue: "")
     }
@@ -48,35 +58,61 @@ struct ContentView: View {
                 isRunning: isBusy,
                 runLogin: runLogin,
                 runImport: runImport,
-                runSwitch: prepareSwitchDraft,
                 runRestart: runRestartCodex,
                 runOpenCodex: runOpenCodex,
                 runForceCloseCodex: runForceCloseCodex,
                 runOpenBlankIncognito: openBlankIncognito,
-                runList: { runFactoryCommand(commandFactory.list) },
-                runHealthCheck: runHealthCheck,
-                requestRemove: prepareRemoveDraft
+                runUpdateCodexAuth: runUpdateCodexAuth,
+                runHealthCheck: runHealthCheck
             )
             .frame(minWidth: 320, idealWidth: 360, maxWidth: 400)
 
-            TerminalPanelView(
-                store: transcriptStore,
-                runner: runner,
-                input: $terminalInput,
-                focusRequest: terminalInputFocusRequest,
-                submitDraft: submitTerminalDraft,
-                openURL: openLoginURL
-            )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VSplitView {
+                AccountDashboardView(
+                    store: accountListStore,
+                    isRunning: isBusy,
+                    refresh: accountListStore.refresh,
+                    switchAccount: switchToAccount,
+                    requestRemove: requestRemoveAccount
+                )
+                .frame(minHeight: 310)
+
+                TerminalPanelView(
+                    store: transcriptStore,
+                    runner: runner,
+                    input: $terminalInput,
+                    focusRequest: terminalInputFocusRequest,
+                    submitDraft: submitTerminalDraft,
+                    openURL: openLoginURL
+                )
+                .frame(minHeight: 230, idealHeight: 280)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(ThemeTokens.Colors.appBackground)
+        .alert(
+            "Remove saved account?",
+            isPresented: isShowingRemoveAlert,
+            presenting: pendingAccountRemoval
+        ) { account in
+            Button("Remove", role: .destructive) {
+                confirmRemoveAccount(account)
+            }
+            Button("Cancel", role: .cancel) {
+                pendingAccountRemoval = nil
+            }
+        } message: { account in
+            Text("Remove \(account.email) from saved accounts. This does not delete the OpenAI account.")
+        }
         .onAppear {
             authSessionMonitor.start(authFilePath: authFilePath)
             codexAppMonitor.start(codexResourceDirectory: codexResourceDirectory)
+            accountListStore.start()
         }
         .onDisappear {
             authSessionMonitor.stop()
             codexAppMonitor.stop()
+            accountListStore.stop()
         }
         .onChange(of: authFilePath) { _, newPath in
             authSessionMonitor.updateAuthFilePath(newPath)
@@ -88,6 +124,17 @@ struct ContentView: View {
             if wasRunning, isRunning == false {
                 authSessionMonitor.refreshCurrent()
                 codexAppMonitor.refresh()
+                accountListStore.refresh()
+            }
+        }
+    }
+
+    private var isShowingRemoveAlert: Binding<Bool> {
+        Binding {
+            pendingAccountRemoval != nil
+        } set: { isShowing in
+            if isShowing == false {
+                pendingAccountRemoval = nil
             }
         }
     }
@@ -109,6 +156,7 @@ struct ContentView: View {
             run(command) { result in
                 if result.exitCode == 0 {
                     alias = ""
+                    accountListStore.refresh()
                 }
             }
         } catch {
@@ -134,6 +182,30 @@ struct ContentView: View {
         }
     }
 
+    private func runUpdateCodexAuth() {
+        do {
+            let command = try commandFactory.updateCodexAuth(channel: selectedCodexAuthReleaseChannel)
+            run(command) { result in
+                guard result.exitCode == 0 else {
+                    return
+                }
+
+                Task {
+                    let version = await codexAuthToolManager.installedVersion()
+                    await MainActor.run {
+                        if let version {
+                            transcriptStore.appendSystemLine("App codex-auth version: \(version).")
+                        } else {
+                            transcriptStore.appendSystemLine("Update finished, but the app could not read the app-owned codex-auth version.")
+                        }
+                    }
+                }
+            }
+        } catch {
+            transcriptStore.failToStart(error)
+        }
+    }
+
     private func openLoginURL(_ url: URL) {
         do {
             try linkOpener.open(url)
@@ -150,16 +222,6 @@ struct ContentView: View {
         }
     }
 
-    private func prepareSwitchDraft() {
-        terminalInput = "codex-auth switch "
-        terminalInputFocusRequest += 1
-    }
-
-    private func prepareRemoveDraft() {
-        terminalInput = "codex-auth remove "
-        terminalInputFocusRequest += 1
-    }
-
     private func submitTerminalDraft(_ draft: String) {
         do {
             switch try CommandDraftParser.parse(draft) {
@@ -168,8 +230,8 @@ struct ContentView: View {
                 Task {
                     await runPreflightSwitch(query: query)
                 }
-            case .removeAccount(let alias):
-                let command = try commandFactory.remove(alias: alias)
+            case .removeAccount(let query):
+                let command = try commandFactory.remove(query: query)
                 terminalInput = ""
                 run(command)
             }
@@ -183,6 +245,41 @@ struct ContentView: View {
     private func runFactoryCommand(_ build: () throws -> CommandDefinition) {
         do {
             run(try build())
+        } catch {
+            transcriptStore.failToStart(error)
+        }
+    }
+
+    private func switchToAccount(_ account: AccountListItem) {
+        guard account.isActive == false else {
+            return
+        }
+
+        Task {
+            await runPreflightSwitch(query: account.safeSelector)
+        }
+    }
+
+    private func requestRemoveAccount(_ account: AccountListItem) {
+        pendingAccountRemoval = account
+    }
+
+    private func confirmRemoveAccount(_ account: AccountListItem) {
+        pendingAccountRemoval = nil
+
+        guard isBusy == false else {
+            transcriptStore.appendSystemLine("A command is already running. Stop it before starting another one.")
+            return
+        }
+
+        do {
+            let command = try commandFactory.remove(query: account.safeSelector)
+            run(command) { result in
+                guard result.exitCode == 0 else {
+                    return
+                }
+                accountListStore.refresh()
+            }
         } catch {
             transcriptStore.failToStart(error)
         }
@@ -220,7 +317,12 @@ struct ContentView: View {
             let command = try commandFactory.switchAccount(query: query)
             transcriptStore.appendSystemLine("Switch check passed. Running \(command.displayCommand).")
             isCheckingSwitch = false
-            run(command)
+            run(command) { result in
+                guard result.exitCode == 0 else {
+                    return
+                }
+                accountListStore.refresh()
+            }
         } catch {
             isCheckingSwitch = false
             transcriptStore.appendSystemLine(error.localizedDescription)
@@ -241,6 +343,7 @@ struct ContentView: View {
             }
             isRunningHealthCheck = false
             authSessionMonitor.refreshCurrent()
+            accountListStore.refresh()
         }
     }
 }

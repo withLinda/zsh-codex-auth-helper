@@ -2,13 +2,16 @@ import Foundation
 
 struct ExecutableResolver {
     let environmentPath: String
+    private let preferredDirectories: [String]
     private let fileExists: (String) -> Bool
 
     init(
         environmentPath: String = ProcessInfo.processInfo.environment["PATH"] ?? "",
+        preferredDirectories: [String] = [CodexAuthToolManager.live().managedBinDirectory.path],
         fileExists: @escaping (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
     ) {
         self.environmentPath = environmentPath
+        self.preferredDirectories = preferredDirectories
         self.fileExists = fileExists
     }
 
@@ -43,18 +46,15 @@ struct ExecutableResolver {
     }
 
     func pathByPrepending(_ directory: String) -> String {
-        let environmentParts = splitPath(environmentPath)
-        if environmentParts.contains(directory) {
-            return environmentPath
-        }
-        if environmentPath.isEmpty {
-            return directory
-        }
-        return "\(directory):\(environmentPath)"
+        pathByPrepending([directory])
+    }
+
+    func pathByPrepending(_ directories: [String]) -> String {
+        unique(directories + splitPath(environmentPath)).joined(separator: ":")
     }
 
     private var searchPaths: [String] {
-        unique(splitPath(environmentPath) + fallbackPaths)
+        unique(preferredDirectories + splitPath(environmentPath) + fallbackPaths)
     }
 
     private var fallbackPaths: [String] {

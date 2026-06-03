@@ -3,8 +3,19 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
+        guard AppRuntime.isRunningUnitTests == false else {
+            return
+        }
+
         NSApp.setActivationPolicy(.regular)
         NSApp.activate(ignoringOtherApps: true)
+    }
+}
+
+enum AppRuntime {
+    static var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+            NSClassFromString("XCTestCase") != nil
     }
 }
 
@@ -14,9 +25,13 @@ struct ZshCodexAuthHelperApp: App {
 
     var body: some Scene {
         WindowGroup("Codex Auth Helper") {
-            ContentView()
-                .frame(minWidth: 980, minHeight: 640)
-                .preferredColorScheme(.dark)
+            if AppRuntime.isRunningUnitTests {
+                UnitTestHostView()
+            } else {
+                ContentView()
+                    .frame(minWidth: 980, minHeight: 640)
+                    .preferredColorScheme(.dark)
+            }
         }
         .windowToolbarStyle(.unified)
         .commands {
@@ -27,5 +42,11 @@ struct ZshCodexAuthHelperApp: App {
             CodexResourceSettingsView()
                 .preferredColorScheme(.dark)
         }
+    }
+}
+
+private struct UnitTestHostView: View {
+    var body: some View {
+        EmptyView()
     }
 }

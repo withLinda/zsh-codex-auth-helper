@@ -2,9 +2,16 @@ import SwiftUI
 
 struct CodexResourceSettingsView: View {
     @AppStorage(CodexResourceSettings.userDefaultsKey) private var codexResourceDirectory = CodexResourceSettings.defaultDirectory
+    @AppStorage(CodexAuthToolSettings.releaseChannelKey) private var codexAuthReleaseChannelRaw = CodexAuthReleaseChannel.stable.rawValue
+
+    private let codexAuthToolManager = CodexAuthToolManager.live()
 
     private var normalizedDirectory: String {
         CodexResourceSettings.normalizedDirectory(codexResourceDirectory)
+    }
+
+    private var selectedCodexAuthReleaseChannel: CodexAuthReleaseChannel {
+        CodexAuthReleaseChannel(storedValue: codexAuthReleaseChannelRaw)
     }
 
     private var codexExecutablePath: String {
@@ -55,6 +62,28 @@ struct CodexResourceSettingsView: View {
                 if normalizedDirectory != codexResourceDirectory {
                     Text("Using \(normalizedDirectory)")
                 }
+            }
+
+            Section {
+                Picker("Update channel", selection: $codexAuthReleaseChannelRaw) {
+                    ForEach(CodexAuthReleaseChannel.allCases) { channel in
+                        Text(channel.displayName).tag(channel.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                VStack(alignment: .leading, spacing: ThemeTokens.Spacing.tight) {
+                    Text(selectedCodexAuthReleaseChannel.detail)
+                        .font(.caption)
+                        .foregroundStyle(ThemeTokens.Colors.secondaryText)
+
+                    Text("The app installs codex-auth into \(codexAuthToolManager.toolRoot.path). The app uses this copy before global PATH.")
+                        .font(.caption)
+                        .foregroundStyle(ThemeTokens.Colors.secondaryText)
+                        .textSelection(.enabled)
+                }
+            } header: {
+                Text("codex-auth")
             }
         }
         .formStyle(.grouped)

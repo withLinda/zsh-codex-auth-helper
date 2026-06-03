@@ -8,24 +8,24 @@ enum CommandRisk: Equatable {
 
 enum CommandDraftParseError: LocalizedError, Equatable {
     case missingSwitchQuery
-    case missingRemoveAlias
+    case missingRemoveSelector
     case unsupportedCommand
 
     var errorDescription: String? {
         switch self {
         case .missingSwitchQuery:
-            return "Add an alias after codex-auth switch before running."
-        case .missingRemoveAlias:
-            return "Add an alias after codex-auth remove before running."
+            return "Add an account selector after codex-auth switch before running."
+        case .missingRemoveSelector:
+            return "Add an account selector after codex-auth remove before running."
         case .unsupportedCommand:
-            return "Only codex-auth switch <alias> or codex-auth remove <alias> can run from this input."
+            return "Only codex-auth switch <selector> or codex-auth remove <selector> can run from this input."
         }
     }
 }
 
 enum CommandDraft: Equatable {
     case switchAccount(query: String)
-    case removeAccount(alias: String)
+    case removeAccount(query: String)
 }
 
 enum CommandDraftParser {
@@ -48,8 +48,8 @@ enum CommandDraftParser {
             return try parseArgument(
                 from: trimmedInput,
                 command: removeCommand,
-                missingError: .missingRemoveAlias,
-                build: CommandDraft.removeAccount(alias:)
+                missingError: .missingRemoveSelector,
+                build: CommandDraft.removeAccount(query:)
             )
         }
 

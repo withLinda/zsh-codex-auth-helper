@@ -25,6 +25,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Open Blank Incognito**: opens a blank Chrome Incognito window from the sidebar, using your normal Chrome profile so Chrome can still offer saved passwords and passkeys.
 - **List Accounts**: shows accounts managed by `codex-auth`.
 - **Health Check**: checks every saved ChatGPT OAuth account one at a time, refreshes valid tokens, and ends with sorted account summaries.
+- **Update codex-auth**: installs or updates the app-owned `codex-auth` tool without changing your global terminal copy.
 - **Remove Account**: prepares `codex-auth remove` so you can type the alias.
 - **Restart Codex**: quits Codex App, waits for its helper processes to exit, and then reopens it after account changes.
 - **Open / Force Close Codex**: shows the right action for the current Codex App state.
@@ -38,10 +39,10 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - macOS 26 or newer.
 - Codex App installed.
 - Node.js and npm.
-- [`codex-auth`](https://github.com/loongphy/codex-auth) installed first. Use the latest stable version.
+- The app can install its own [`codex-auth`](https://github.com/loongphy/codex-auth) copy. A global install is only a fallback.
 - For source builds: Xcode 26 and XcodeGen.
 
-Install `codex-auth`:
+Optional global fallback install:
 
 ```bash
 npm install -g @loongphy/codex-auth@latest
@@ -100,13 +101,8 @@ Then build and run the app from the project folder:
 
 Use this flow the first time:
 
-1. Install `codex-auth`:
-
-   ```bash
-   npm install -g @loongphy/codex-auth@latest
-   ```
-
-2. Open **Codex Auth Helper**.
+1. Open **Codex Auth Helper**.
+2. Click **Update codex-auth**. This installs the app-owned tool into `~/Library/Application Support/CodexAuthHelper/codex-auth-tool`.
 3. Click **Login**.
 4. If the terminal shows a login link, click **Open Incognito**. If it shows a one-time code, click **Copy Code** and paste it into the browser page.
 5. Finish the login in the browser. When login succeeds, `codex-auth` saves the account automatically.
@@ -133,6 +129,7 @@ Use this flow the first time:
 - **Open Codex** appears when Codex App is closed. It opens Codex without changing accounts.
 - **Force Close Codex** appears when Codex App is open. Use it only when Codex is stuck, did not close during restart, or still seems to be using the wrong account. It can kill Codex processes directly.
 - **List Accounts** runs `codex-auth list`. Use it to see saved accounts and row numbers.
+- **Update codex-auth** runs `npm install --global --prefix ~/Library/Application Support/CodexAuthHelper/codex-auth-tool @loongphy/codex-auth@latest` or `@next`, depending on the Settings channel. It updates only the app-owned tool. It does not run `sudo` and does not change your global terminal `codex-auth`.
 - **Health Check** checks saved ChatGPT OAuth accounts. See the next section for details and timing.
 - **Remove Account** prepares `codex-auth remove` in the terminal input. Add the alias or selector, then press Return. This removes the saved account from `codex-auth`; it does not delete your OpenAI account.
 
@@ -155,6 +152,13 @@ The default path is:
 ```text
 /Applications/Codex.app/Contents/Resources
 ```
+
+Settings also has a `codex-auth` update channel:
+
+- **Stable** installs `@loongphy/codex-auth@latest`. This is the safer normal choice.
+- **Next Alpha** installs `@loongphy/codex-auth@next`. This can get new features sooner, but it can break more often.
+
+The app always looks for its app-owned `codex-auth` first. If it is missing, the app falls back to global locations such as `/opt/homebrew/bin/codex-auth`.
 
 ## Health Check
 
@@ -193,7 +197,8 @@ If an account needs login again, use **Login** and finish the browser login. Use
 
 ## Troubleshooting
 
-- **Could not find `codex-auth`**: install it with `npm install -g @loongphy/codex-auth`, then reopen the app. If you installed it in a custom location, make sure it is available from your shell `PATH`.
+- **Could not find npm**: install Node.js and npm, then reopen the app.
+- **Could not find `codex-auth`**: click **Update codex-auth** first. If you prefer a global fallback, install it with `npm install -g @loongphy/codex-auth`, then reopen the app.
 - **No auth file**: check that the **Auth file** field points to `~/.codex/auth.json`, or log in again.
 - **Unreadable auth**: the selected auth file is not valid JSON or cannot be read. Log in again, then save the login.
 - **No `codex-auth` registry was found**: use **Save / Update Login** or **List Accounts** so `codex-auth` can create or refresh its account registry.

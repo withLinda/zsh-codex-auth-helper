@@ -169,6 +169,7 @@ struct AuthAccountRecord: Decodable, Equatable, Sendable {
     var accountName: String?
     var plan: String?
     var authMode: String?
+    var lastUsageAt: String?
 
     enum CodingKeys: String, CodingKey {
         case accountKey = "account_key"
@@ -179,6 +180,7 @@ struct AuthAccountRecord: Decodable, Equatable, Sendable {
         case accountName = "account_name"
         case plan
         case authMode = "auth_mode"
+        case lastUsageAt = "last_usage_at"
     }
 
     init(from decoder: Decoder) throws {
@@ -191,6 +193,7 @@ struct AuthAccountRecord: Decodable, Equatable, Sendable {
         accountName = try container.decodeIfPresent(String.self, forKey: .accountName)
         plan = try container.decodeIfPresent(String.self, forKey: .plan)
         authMode = try container.decodeIfPresent(String.self, forKey: .authMode)
+        lastUsageAt = try container.decodeIfPresent(String.self, forKey: .lastUsageAt)
     }
 
     var isAPIKeyAccount: Bool {

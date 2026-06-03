@@ -3,7 +3,74 @@ import Testing
 @testable import ZshCodexAuthHelper
 
 struct CodexCommandFactoryTests {
+    @Test func updateCodexAuthBuildsStableNpmInstallCommand() throws {
+        let manager = CodexAuthToolManager(
+            applicationSupportDirectory: URL(fileURLWithPath: "/Users/linda/Library/Application Support")
+        )
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin:/usr/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/npm" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda"),
+            codexAuthToolManager: manager
+        )
+
+        let command = try factory.updateCodexAuth(channel: .stable)
+
+        #expect(command.id == "update-codex-auth")
+        #expect(command.title == "Update codex-auth")
+        #expect(command.executable == "/opt/homebrew/bin/npm")
+        #expect(command.arguments == [
+            "install",
+            "--global",
+            "--prefix",
+            "/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool",
+            "@loongphy/codex-auth@latest"
+        ])
+        #expect(command.environment["PATH"] == "/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin")
+        #expect(command.displayCommand == "npm install --global --prefix '/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool' @loongphy/codex-auth@latest")
+    }
+
+    @Test func updateCodexAuthBuildsNextNpmInstallCommand() throws {
+        let manager = CodexAuthToolManager(
+            applicationSupportDirectory: URL(fileURLWithPath: "/Users/linda/Library/Application Support")
+        )
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin:/usr/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/npm" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda"),
+            codexAuthToolManager: manager
+        )
+
+        let command = try factory.updateCodexAuth(channel: .next)
+
+        #expect(command.arguments.last == "@loongphy/codex-auth@next")
+        #expect(command.displayCommand.hasSuffix("@loongphy/codex-auth@next"))
+    }
+
+    @Test func updateCodexAuthRequiresNpmExecutable() {
+        let factory = CodexCommandFactory(
+            resolver: .init(environmentPath: "/usr/bin:/bin", fileExists: { _ in false }),
+            homeDirectory: URL(fileURLWithPath: "/Users/linda"),
+            codexAuthToolManager: CodexAuthToolManager(
+                applicationSupportDirectory: URL(fileURLWithPath: "/Users/linda/Library/Application Support")
+            )
+        )
+
+        #expect(throws: CommandFactoryError.missingNPM) {
+            _ = try factory.updateCodexAuth(channel: .stable)
+        }
+    }
+
     @Test func loginUsesCodexAuthAndPrependsResourcePathForBundledCodex() throws {
+        let manager = CodexAuthToolManager(
+            applicationSupportDirectory: URL(fileURLWithPath: "/Users/linda/Library/Application Support")
+        )
         let resolver = ExecutableResolver(
             environmentPath: "/usr/bin:/bin",
             fileExists: {
@@ -13,14 +80,15 @@ struct CodexCommandFactoryTests {
         )
         let factory = CodexCommandFactory(
             resolver: resolver,
-            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+            homeDirectory: URL(fileURLWithPath: "/Users/linda"),
+            codexAuthToolManager: manager
         )
 
         let command = try factory.login()
 
         #expect(command.executable == "/opt/homebrew/bin/codex-auth")
         #expect(command.arguments == ["login", "--device-auth"])
-        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin:/bin")
+        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin:/bin")
         #expect(command.displayCommand.contains("codex-auth login --device-auth"))
     }
 
@@ -42,7 +110,7 @@ struct CodexCommandFactoryTests {
         )
 
         #expect(command.executable == "/opt/homebrew/bin/codex-auth")
-        #expect(command.environment["PATH"] == "/Users/linda/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin:/bin")
+        #expect(command.environment["PATH"] == "/Users/linda/Applications/Codex.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin:/bin")
     }
 
     @Test func loginKeepsCustomResourceDirectoryOnPathWhenDirectoryIsInvalid() throws {
@@ -60,7 +128,7 @@ struct CodexCommandFactoryTests {
         )
 
         #expect(command.executable == "/opt/homebrew/bin/codex-auth")
-        #expect(command.environment["PATH"] == "/Users/linda/Missing Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin")
+        #expect(command.environment["PATH"] == "/Users/linda/Missing Codex.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin")
     }
 
     @Test func loginDisplayCommandQuotesCustomPathSegmentWithSpaces() throws {
@@ -99,7 +167,7 @@ struct CodexCommandFactoryTests {
         let command = try factory.login(codexResourceDirectory: "   ")
 
         #expect(command.executable == "/opt/homebrew/bin/codex-auth")
-        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/opt/homebrew/bin:/usr/bin:/bin")
+        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin:/bin")
     }
 
     @Test func loginRequiresCodexAuthExecutable() throws {
@@ -223,7 +291,7 @@ struct CodexCommandFactoryTests {
     @Test func commandDraftParserBuildsRemoveCommandFromPreparedDraft() throws {
         let draft = try CommandDraftParser.parse("codex-auth remove damar")
 
-        #expect(draft == .removeAccount(alias: "damar"))
+        #expect(draft == .removeAccount(query: "damar"))
     }
 
     @Test func commandDraftParserRejectsBareSwitchDraft() {
@@ -233,7 +301,7 @@ struct CodexCommandFactoryTests {
     }
 
     @Test func commandDraftParserRejectsBareRemoveDraft() {
-        #expect(throws: CommandDraftParseError.missingRemoveAlias) {
+        #expect(throws: CommandDraftParseError.missingRemoveSelector) {
             try CommandDraftParser.parse("codex-auth remove ")
         }
     }
@@ -249,13 +317,13 @@ struct CodexCommandFactoryTests {
             _ = try CommandDraftParser.parse("codex-auth list")
             Issue.record("Expected unsupported command to throw.")
         } catch let error as CommandDraftParseError {
-            #expect(error.localizedDescription == "Only codex-auth switch <alias> or codex-auth remove <alias> can run from this input.")
+            #expect(error.localizedDescription == "Only codex-auth switch <selector> or codex-auth remove <selector> can run from this input.")
         } catch {
             Issue.record("Wrong error thrown: \(error)")
         }
     }
 
-    @Test func removeAccountPassesAliasAsSeparateArgument() throws {
+    @Test func removeAccountPassesSelectorAsSeparateArgument() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/opt/homebrew/bin",
             fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
@@ -265,14 +333,14 @@ struct CodexCommandFactoryTests {
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = try factory.remove(alias: "damar")
+        let command = try factory.remove(query: "damar")
 
         #expect(command.executable == "/opt/homebrew/bin/codex-auth")
         #expect(command.arguments == ["remove", "damar"])
         #expect(command.displayCommand == "codex-auth remove damar")
     }
 
-    @Test func removeAccountDisplayCommandQuotesSpacedAliasButKeepsOneArgument() throws {
+    @Test func removeAccountDisplayCommandQuotesSpacedSelectorButKeepsOneArgument() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/opt/homebrew/bin",
             fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
@@ -282,13 +350,13 @@ struct CodexCommandFactoryTests {
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = try factory.remove(alias: "personal account")
+        let command = try factory.remove(query: "personal account")
 
         #expect(command.arguments == ["remove", "personal account"])
         #expect(command.displayCommand == "codex-auth remove 'personal account'")
     }
 
-    @Test func removeAccountDisplayCommandEscapesQuotedAliasButKeepsOneArgument() throws {
+    @Test func removeAccountDisplayCommandEscapesQuotedSelectorButKeepsOneArgument() throws {
         let resolver = ExecutableResolver(
             environmentPath: "/opt/homebrew/bin",
             fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
@@ -298,21 +366,37 @@ struct CodexCommandFactoryTests {
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = try factory.remove(alias: "dama'r")
+        let command = try factory.remove(query: "dama'r")
 
         #expect(command.arguments == ["remove", "dama'r"])
         #expect(command.displayCommand == #"codex-auth remove 'dama'\''r'"#)
     }
 
-    @Test func removeAccountRejectsEmptyAlias() {
+    @Test func removeAccountRejectsEmptySelector() {
         let factory = CodexCommandFactory(
             resolver: .init(environmentPath: "", fileExists: { _ in true }),
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        #expect(throws: CommandFactoryError.missingRemoveAlias) {
-            try factory.remove(alias: "   ")
+        #expect(throws: CommandFactoryError.missingRemoveSelector) {
+            try factory.remove(query: "   ")
         }
+    }
+
+    @Test func removeAccountNeverBuildsRemoveAllForRowSelector() throws {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        let command = try factory.remove(query: "2")
+
+        #expect(command.arguments == ["remove", "2"])
+        #expect(command.arguments.contains("--all") == false)
     }
 
     @Test func removeAccountIsMarkedDestructive() throws {
@@ -325,7 +409,7 @@ struct CodexCommandFactoryTests {
             homeDirectory: URL(fileURLWithPath: "/Users/linda")
         )
 
-        let command = try factory.remove(alias: "damar")
+        let command = try factory.remove(query: "damar")
 
         #expect(command.arguments == ["remove", "damar"])
         #expect(command.risk == .destructive)
