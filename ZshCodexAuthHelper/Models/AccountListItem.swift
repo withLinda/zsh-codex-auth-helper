@@ -50,4 +50,36 @@ struct AccountListItem: Identifiable, Equatable, Sendable {
         }
         return parts
     }
+
+    func matchesSearchQuery(_ query: String) -> Bool {
+        guard let normalizedQuery = query.searchNormalizedNonEmpty else {
+            return true
+        }
+
+        return searchFields.contains { field in
+            field.searchNormalized.contains(normalizedQuery)
+        }
+    }
+
+    private var searchFields: [String] {
+        [
+            email,
+            alias,
+            accountName,
+            planLabel,
+            authMode
+        ].compactMap(\.self)
+    }
+}
+
+private extension String {
+    var searchNormalized: String {
+        folding(options: [.caseInsensitive, .diacriticInsensitive], locale: .current)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    var searchNormalizedNonEmpty: String? {
+        let normalized = searchNormalized
+        return normalized.isEmpty ? nil : normalized
+    }
 }

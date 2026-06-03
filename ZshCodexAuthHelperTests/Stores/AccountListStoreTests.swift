@@ -93,6 +93,49 @@ struct AccountListStoreTests {
         #expect(selectors["user_same_a::acct_same_a"] == "5")
         #expect(selectors["user_same_b::acct_same_b"] == "6")
     }
+
+    @Test func accountSearchMatchesVisibleAccountFields() throws {
+        let item = AccountListItem(
+            accountKey: "user_aisy::acct_aisy",
+            email: "aisy@example.com",
+            alias: "daily",
+            accountName: "Personal Login",
+            plan: "chatgpt-plus",
+            authMode: "oauth",
+            isActive: false,
+            rowNumber: 7,
+            safeSelector: "daily",
+            lastUsageAt: nil
+        )
+
+        #expect(item.matchesSearchQuery(""))
+        #expect(item.matchesSearchQuery("   "))
+        #expect(item.matchesSearchQuery("aisy@"))
+        #expect(item.matchesSearchQuery("DAILY"))
+        #expect(item.matchesSearchQuery("personal"))
+        #expect(item.matchesSearchQuery("plus"))
+        #expect(item.matchesSearchQuery("oauth"))
+        #expect(item.matchesSearchQuery("missing") == false)
+    }
+
+    @Test func accountSearchIgnoresCaseWhitespaceAndDiacritics() throws {
+        let item = AccountListItem(
+            accountKey: "user_renee::acct_renee",
+            email: "renee@example.com",
+            alias: "Renée Work",
+            accountName: "Café Team",
+            plan: "pro",
+            authMode: nil,
+            isActive: false,
+            rowNumber: 3,
+            safeSelector: "renee@example.com",
+            lastUsageAt: nil
+        )
+
+        #expect(item.matchesSearchQuery("  RENEE  "))
+        #expect(item.matchesSearchQuery("cafe"))
+        #expect(item.matchesSearchQuery("PRO"))
+    }
 }
 
 private struct AccountListFixture {

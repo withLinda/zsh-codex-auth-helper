@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AccountDashboardView: View {
     @ObservedObject var store: AccountListStore
+    @State private var searchText = ""
 
     let isRunning: Bool
     let refresh: () -> Void
@@ -31,8 +32,14 @@ struct AccountDashboardView: View {
                     .font(.callout)
                     .foregroundStyle(ThemeTokens.Colors.secondaryText)
             }
+            .layoutPriority(1)
 
-            Spacer()
+            Spacer(minLength: ThemeTokens.Spacing.group)
+
+            if shouldShowSearch {
+                AccountSearchField(text: $searchText)
+                    .frame(minWidth: 220, idealWidth: 280, maxWidth: 320)
+            }
 
             Button(action: refresh) {
                 Label("Refresh", systemImage: "arrow.clockwise")
@@ -74,26 +81,39 @@ struct AccountDashboardView: View {
                 detail: "The saved account list is empty."
             )
         case .loaded(let items):
-            ScrollView {
-                LazyVStack(spacing: ThemeTokens.Spacing.tight) {
-                    ForEach(items) { item in
-                        AccountRowView(
-                            item: item,
-                            isRunning: isRunning,
-                            switchAccount: switchAccount,
-                            requestRemove: requestRemove
-                        )
+            let visibleItems = filteredItems(from: items)
+            if visibleItems.isEmpty, isSearchActive {
+                AccountEmptyStateView(
+                    systemImage: "magnifyingglass",
+                    title: "No matches",
+                    detail: "Try another email, alias, or plan."
+                )
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: ThemeTokens.Spacing.tight) {
+                        ForEach(visibleItems) { item in
+                            AccountRowView(
+                                item: item,
+                                isRunning: isRunning,
+                                switchAccount: switchAccount,
+                                requestRemove: requestRemove
+                            )
+                        }
                     }
+                    .padding(ThemeTokens.Spacing.group)
                 }
-                .padding(ThemeTokens.Spacing.group)
+                .background(ThemeTokens.Colors.terminalBackground)
             }
-            .background(ThemeTokens.Colors.terminalBackground)
         }
     }
 
     private var accountCountText: String {
         switch store.state {
         case .loaded(let items):
+            if isSearchActive {
+                return "\(filteredItems(from: items).count) of \(items.count) shown"
+            }
+
             return "\(items.count) saved account\(items.count == 1 ? "" : "s")"
         case .empty:
             return "0 saved accounts"
@@ -103,6 +123,63 @@ struct AccountDashboardView: View {
             return "Needs attention"
         case .loading:
             return "Loading"
+        }
+    }
+
+    private var shouldShowSearch: Bool {
+        if case .loaded = store.state {
+            return true
+        }
+
+        return false
+    }
+
+    private var isSearchActive: Bool {
+        searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+    }
+
+    private func filteredItems(from items: [AccountListItem]) -> [AccountListItem] {
+        items.filter { $0.matchesSearchQuery(searchText) }
+    }
+}
+
+private struct AccountSearchField: View {
+    @Binding var text: String
+
+    var body: some View {
+        HStack(spacing: ThemeTokens.Spacing.tight) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(ThemeTokens.Colors.supportText)
+                .frame(width: 18)
+
+            TextField("Search saved accounts", text: $text)
+                .textFieldStyle(.plain)
+                .font(.callout)
+                .foregroundStyle(ThemeTokens.Colors.primaryText)
+                .accessibilityLabel("Search saved accounts")
+
+            if text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(ThemeTokens.Colors.mutedText)
+                .frame(width: 24, height: 24)
+                .accessibilityLabel("Clear account search")
+                .help("Clear account search")
+            }
+        }
+        .padding(.horizontal, ThemeTokens.Spacing.normal)
+        .frame(minHeight: 36)
+        .background(ThemeTokens.Colors.fieldSurface)
+        .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous)
+                .stroke(ThemeTokens.Colors.border, lineWidth: 1)
         }
     }
 }

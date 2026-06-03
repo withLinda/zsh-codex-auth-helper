@@ -22,6 +22,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Login**: runs `codex-auth login --device-auth`, which saves the account through codex-auth's isolated login flow.
 - **Save / Update Login**: saves an auth JSON file. Leave the alias blank to update an existing saved account without changing its alias.
 - **Switch Account**: prepares `codex-auth switch` so you can type the alias.
+- **Search saved accounts**: filter the saved-account list by email, alias, account name, plan, or auth mode.
 - **Open Blank Incognito**: opens a blank Chrome Incognito window from the sidebar, using your normal Chrome profile so Chrome can still offer saved passwords and passkeys.
 - **List Accounts**: shows accounts managed by `codex-auth`.
 - **Health Check**: checks every saved ChatGPT OAuth account one at a time, refreshes valid tokens, and ends with sorted account summaries.
@@ -56,13 +57,13 @@ For most users, this is the easiest way to install the app. You do not need Xcod
 
 Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the newest DMG file. For this release, download:
 
-- `CodexAuthHelper-v2026.06.04.1.dmg`
+- `CodexAuthHelper-v2026.06.04.2.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.06.04.1.dmg.sha256`
+- `CodexAuthHelper-v2026.06.04.2.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
@@ -129,6 +130,7 @@ Use this flow the first time:
 - **Open Codex** appears when Codex App is closed. It opens Codex without changing accounts.
 - **Force Close Codex** appears when Codex App is open. Use it only when Codex is stuck, did not close during restart, or still seems to be using the wrong account. It can kill Codex processes directly.
 - **List Accounts** runs `codex-auth list`. Use it to see saved accounts and row numbers.
+- **Search saved accounts** filters the visible saved-account rows. Search by email, alias, account name, plan, or auth mode. Empty search text shows every saved account again.
 - **Update codex-auth** runs `npm install --global --prefix ~/Library/Application Support/CodexAuthHelper/codex-auth-tool @loongphy/codex-auth@latest` or `@next`, depending on the Settings channel. It updates only the app-owned tool. It does not run `sudo` and does not change your global terminal `codex-auth`.
 - **Health Check** checks saved ChatGPT OAuth accounts. See the next section for details and timing.
 - **Remove Account** prepares `codex-auth remove` in the terminal input. Add the alias or selector, then press Return. This removes the saved account from `codex-auth`; it does not delete your OpenAI account.

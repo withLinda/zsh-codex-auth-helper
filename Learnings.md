@@ -95,6 +95,10 @@ Template:
   Root cause: the row used `.accessibilityElement(children: .combine)`, so SwiftUI exposed the whole row as one accessibility element and hid the real Switch and Remove buttons inside it.
   Guardrail: do not combine a SwiftUI row when it contains real buttons. Keep row buttons as separate accessibility elements, then verify with `take_ax_snapshot` and a native alert Cancel check.
 
+- 2026-06-04: Symptom: AX verification changed the account search text field value, but the saved-account list did not filter.
+  Root cause: `ax_set_value` writes the accessibility value directly and can skip SwiftUI text-input events, so `@State` live filtering may not update.
+  Guardrail: for live SwiftUI search fields, verify the user path with coordinate click plus `type_text`, then confirm the filtered count and rows with `take_ax_snapshot`.
+
 ## Testing Lessons
 
 - 2026-06-02: Symptom: tests could accidentally try real OAuth refreshes.
