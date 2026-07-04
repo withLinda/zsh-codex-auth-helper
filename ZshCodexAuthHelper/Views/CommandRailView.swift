@@ -73,7 +73,13 @@ struct CommandRailView: View {
                     .foregroundStyle(ThemeTokens.Colors.primaryText)
 
                 CommandButton(title: "Login", systemImage: "person.crop.circle.badge.plus", action: runLogin)
-                CommandButton(title: "Restart Codex", systemImage: "power", tint: ThemeTokens.Colors.warning, action: runRestart)
+                CommandButton(
+                    title: "Restart Codex",
+                    systemImage: "power",
+                    tint: ThemeTokens.Colors.warning,
+                    action: runRestart
+                )
+                .disabled(codexAppState.canRestart == false)
                 codexAppControlButton
                 CommandButton(title: "Update codex-auth", systemImage: "arrow.down.circle", action: runUpdateCodexAuth)
                 CommandButton(title: "Health Check", systemImage: "checkmark.shield", tint: ThemeTokens.Colors.success, action: runHealthCheck)
@@ -182,6 +188,8 @@ private struct LabeledTextField: View {
 }
 
 private struct CommandButton: View {
+    @Environment(\.isEnabled) private var isEnabled
+
     let title: String
     let systemImage: String
     var tint = ThemeTokens.Colors.info
@@ -192,22 +200,23 @@ private struct CommandButton: View {
             HStack(spacing: ThemeTokens.Spacing.normal) {
                 Image(systemName: systemImage)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(tint)
+                    .foregroundStyle(isEnabled ? tint : ThemeTokens.Colors.mutedText)
                     .frame(width: 20)
 
                 Text(title)
                     .font(.callout.weight(.medium))
-                    .foregroundStyle(ThemeTokens.Colors.primaryText)
+                    .foregroundStyle(isEnabled ? ThemeTokens.Colors.primaryText : ThemeTokens.Colors.mutedText)
 
                 Spacer()
             }
             .padding(.horizontal, ThemeTokens.Spacing.normal)
             .frame(minHeight: 44)
-            .background(ThemeTokens.Colors.nestedSurface)
+            .background(isEnabled ? ThemeTokens.Colors.nestedSurface : ThemeTokens.Colors.panelSurface)
             .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous))
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())
+        .accessibilityLabel(title)
         .opacity(0.95)
     }
 }

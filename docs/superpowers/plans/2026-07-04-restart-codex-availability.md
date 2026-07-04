@@ -36,7 +36,7 @@ xcodebuild test \
   -project ZshCodexAuthHelper.xcodeproj \
   -scheme ZshCodexAuthHelper \
   -destination 'platform=macOS' \
-  -only-testing:ZshCodexAuthHelperTests/CodexAppMonitorTests/restartIsAvailableOnlyWhenCodexIsOpen
+  -only-testing:ZshCodexAuthHelperTests/CodexAppMonitorTests
 ```
 
 Expected: build failure because `CodexAppState` has no member `canRestart`.
@@ -60,7 +60,7 @@ enum CodexAppState: Equatable {
 
 Run the same focused `xcodebuild test` command.
 
-Expected: `CodexAppMonitorTests.restartIsAvailableOnlyWhenCodexIsOpen` passes.
+Expected: all 6 `CodexAppMonitorTests`, including `restartIsAvailableOnlyWhenCodexIsOpen`, pass.
 
 ### Task 2: Connect the button behavior and disabled appearance
 

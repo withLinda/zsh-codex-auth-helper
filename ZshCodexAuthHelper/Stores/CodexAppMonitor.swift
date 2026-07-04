@@ -4,6 +4,10 @@ import Foundation
 enum CodexAppState: Equatable {
     case open
     case closed
+
+    var canRestart: Bool {
+        self == .open
+    }
 }
 
 struct CodexRunningApplicationSnapshot: Equatable {

@@ -4,6 +4,11 @@ import Testing
 
 @MainActor
 struct CodexAppMonitorTests {
+    @Test func restartIsAvailableOnlyWhenCodexIsOpen() {
+        #expect(CodexAppState.open.canRestart)
+        #expect(CodexAppState.closed.canRestart == false)
+    }
+
     @Test func refreshMarksCodexOpenWhenBundleIdentifierIsRunning() {
         let monitor = CodexAppMonitor(
             runningApplications: {

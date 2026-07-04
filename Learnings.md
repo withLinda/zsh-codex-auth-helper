@@ -91,6 +91,14 @@ Template:
 
 ## UI Lessons
 
+- 2026-07-04: Symptom: **Restart Codex** looked available while Codex App was closed, even though **Open Codex** was the only useful action.
+  Root cause: the command rail showed the restart action without connecting it to `CodexAppMonitor.state`, and the custom plain button did not define a clear disabled appearance.
+  Guardrail: derive restart availability from `CodexAppState.canRestart`, use SwiftUI `disabled(_:)` for interaction, and let `CommandButton` read `EnvironmentValues.isEnabled` for one consistent muted state.
+
+- 2026-07-04: Symptom: command rail buttons looked correct, but `take_ax_snapshot` showed unnamed `button` elements, making automation and accessibility weaker than the visible UI.
+  Root cause: the custom plain SwiftUI `Button` label did not reliably become the button's accessibility name.
+  Guardrail: set `.accessibilityLabel(title)` inside reusable custom button components, then verify important controls through AX attributes. If `take_ax_snapshot` prints only `button`, check `AXDescription` before assuming labels are missing.
+
 - 2026-06-04: Symptom: the account row looked correct, but automation could not press the row-level Remove button reliably.
   Root cause: the row used `.accessibilityElement(children: .combine)`, so SwiftUI exposed the whole row as one accessibility element and hid the real Switch and Remove buttons inside it.
   Guardrail: do not combine a SwiftUI row when it contains real buttons. Keep row buttons as separate accessibility elements, then verify with `take_ax_snapshot` and a native alert Cancel check.
@@ -100,6 +108,10 @@ Template:
   Guardrail: for live SwiftUI search fields, verify the user path with coordinate click plus `type_text`, then confirm the filtered count and rows with `take_ax_snapshot`.
 
 ## Testing Lessons
+
+- 2026-07-04: Symptom: a method-level `xcodebuild -only-testing` filter printed `TEST SUCCEEDED` but ran zero Swift Testing tests.
+  Root cause: the method selector did not match the Swift Testing function in this app-hosted test target, so it proved compilation only.
+  Guardrail: filter this target at suite level, for example `-only-testing:ZshCodexAuthHelperTests/CodexAppMonitorTests`, and confirm the log says `Test run with N tests` before treating the run as proof.
 
 - 2026-06-02: Symptom: tests could accidentally try real OAuth refreshes.
   Root cause: Switch can refresh OAuth accounts when conditional renewal is needed, so any OAuth refresh-path test without a fake refresher can fall through to the live refresher.
