@@ -15,6 +15,7 @@
 		2C9F93A702F4C2564A79A713 /* AuthAccountRefreshCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA8689C2BB2440B5A19EC6B0 /* AuthAccountRefreshCoordinator.swift */; };
 		3022892BC27C2A962F03F7FE /* AccountListStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBB3C1239408A6B91EBE8885 /* AccountListStore.swift */; };
 		358573D3BE7996F95254C9FC /* AuthAccountFileLock.swift in Sources */ = {isa = PBXBuildFile; fileRef = D95C8B1D1A8A7F1A5C913337 /* AuthAccountFileLock.swift */; };
+		43A48014A930FF298CA81213 /* ThemeTokensTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75BF5808E00B225245F74990 /* ThemeTokensTests.swift */; };
 		47A3188952917590B74FE2AF /* AuthAccountStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54F85C5B54FF7BF34B491332 /* AuthAccountStore.swift */; };
 		48929FC5DB13FCE63B275E60 /* CodexAppMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46118D9621C050FB38DA5A83 /* CodexAppMonitor.swift */; };
 		4A069B133E32B97B1F1E63E4 /* AuthSessionReaderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 983C0CB14AD9D1FE4EBFC8AB /* AuthSessionReaderTests.swift */; };
@@ -85,6 +86,7 @@
 		632A50936F0255589D25B147 /* ExecutableResolverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExecutableResolverTests.swift; sourceTree = "<group>"; };
 		661229301A238C2F8486A389 /* ShellQuoting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShellQuoting.swift; sourceTree = "<group>"; };
 		69A6D62DF58A854CA768102C /* PTYCommandExecutorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PTYCommandExecutorTests.swift; sourceTree = "<group>"; };
+		75BF5808E00B225245F74990 /* ThemeTokensTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeTokensTests.swift; sourceTree = "<group>"; };
 		78CEF686BDC6EE3749638A9E /* CommandRunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommandRunnerTests.swift; sourceTree = "<group>"; };
 		7A66138C049E9A700DDAE935 /* CodexResourceSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CodexResourceSettings.swift; sourceTree = "<group>"; };
 		878A6987A9FAF357EDDFF905 /* ChromeIncognitoLinkOpener.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChromeIncognitoLinkOpener.swift; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 			children = (
 				7FDF3DAB196F7C599405B2BD /* Services */,
 				BC2C63F583829BF151034F26 /* Stores */,
+				9D1824B260B04FAA2B66C0A7 /* Support */,
 			);
 			path = ZshCodexAuthHelperTests;
 			sourceTree = "<group>";
@@ -186,6 +189,14 @@
 				BF4D10AAAF431EED38FE7D7C /* ZshCodexAuthHelperTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		9D1824B260B04FAA2B66C0A7 /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				75BF5808E00B225245F74990 /* ThemeTokensTests.swift */,
+			);
+			path = Support;
 			sourceTree = "<group>";
 		};
 		BC2C63F583829BF151034F26 /* Stores */ = {
@@ -344,6 +355,7 @@
 				A7EC3FEB5286E5AF90032837 /* OAuthTokenRefresherTests.swift in Sources */,
 				23E84AE16A8611D13240BA07 /* PTYCommandExecutorTests.swift in Sources */,
 				F5D94A09F5A570B7224B24EB /* TerminalTranscriptStoreTests.swift in Sources */,
+				43A48014A930FF298CA81213 /* ThemeTokensTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

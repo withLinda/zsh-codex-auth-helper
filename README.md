@@ -34,6 +34,7 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Link detection**: open the latest detected login link in Chrome Incognito with one click.
 - **One-time code detection**: copy detected login codes with one click.
 - **Configurable Codex path**: set the Codex resources path in Settings if Codex App is installed somewhere else.
+- **Theme settings**: choose Everforest Dark or Light, with Hard, Medium, or Soft contrast.
 
 ## Requirements
 
@@ -57,13 +58,13 @@ For most users, this is the easiest way to install or update the app. You do not
 
 Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the newest DMG file. For this release, download:
 
-- `CodexAuthHelper-v2026.07.04.1.dmg`
+- `CodexAuthHelper-v2026.07.07.1.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.07.04.1.dmg.sha256`
+- `CodexAuthHelper-v2026.07.07.1.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 

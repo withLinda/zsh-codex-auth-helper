@@ -95,7 +95,7 @@ struct TerminalPanelView: View {
         }
         .padding(.horizontal, ThemeTokens.Spacing.section)
         .padding(.vertical, ThemeTokens.Spacing.group)
-        .background(.regularMaterial)
+        .background(ThemeTokens.Colors.chromeSurface)
     }
 
     private var terminalBody: some View {
@@ -159,6 +159,8 @@ struct TerminalPanelView: View {
             TerminalInputTextField(
                 text: $input,
                 placeholder: inputPlaceholder,
+                textColorHex: ThemeTokens.Colors.primaryTextHex,
+                placeholderColorHex: ThemeTokens.Colors.disabledTextHex,
                 focusRequest: focusRequest,
                 onSubmit: sendInput
             )
@@ -289,6 +291,8 @@ private struct TerminalInputTextField: NSViewRepresentable {
     @Binding var text: String
 
     let placeholder: String
+    let textColorHex: UInt32
+    let placeholderColorHex: UInt32
     let focusRequest: Int
     let onSubmit: () -> Void
 
@@ -308,7 +312,7 @@ private struct TerminalInputTextField: NSViewRepresentable {
         textField.usesSingleLineMode = true
         textField.lineBreakMode = .byClipping
         textField.font = Self.font
-        textField.textColor = Self.textColor
+        textField.textColor = NSColor(hex: textColorHex)
         return textField
     }
 
@@ -319,10 +323,11 @@ private struct TerminalInputTextField: NSViewRepresentable {
             textField.stringValue = text
         }
 
+        textField.textColor = NSColor(hex: textColorHex)
         textField.placeholderAttributedString = NSAttributedString(
             string: placeholder,
             attributes: [
-                .foregroundColor: Self.placeholderColor,
+                .foregroundColor: NSColor(hex: placeholderColorHex),
                 .font: Self.font
             ]
         )
@@ -343,18 +348,6 @@ private struct TerminalInputTextField: NSViewRepresentable {
     }
 
     private static let font = NSFont.monospacedSystemFont(ofSize: 13, weight: .regular)
-    private static let textColor = NSColor(
-        red: CGFloat(0xD3) / 255.0,
-        green: CGFloat(0xC6) / 255.0,
-        blue: CGFloat(0xAA) / 255.0,
-        alpha: 1
-    )
-    private static let placeholderColor = NSColor(
-        red: CGFloat(0x7A) / 255.0,
-        green: CGFloat(0x84) / 255.0,
-        blue: CGFloat(0x78) / 255.0,
-        alpha: 1
-    )
 
     private static func placeCursorAtEnd(of textField: NSTextField) {
         let end = textField.stringValue.utf16.count

@@ -50,7 +50,7 @@ struct AccountDashboardView: View {
         }
         .padding(.horizontal, ThemeTokens.Spacing.section)
         .padding(.vertical, ThemeTokens.Spacing.group)
-        .background(.regularMaterial)
+        .background(ThemeTokens.Colors.chromeSurface)
     }
 
     @ViewBuilder

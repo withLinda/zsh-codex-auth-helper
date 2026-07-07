@@ -3,6 +3,7 @@ import SwiftUI
 struct CodexResourceSettingsView: View {
     @AppStorage(CodexResourceSettings.userDefaultsKey) private var codexResourceDirectory = CodexResourceSettings.defaultDirectory
     @AppStorage(CodexAuthToolSettings.releaseChannelKey) private var codexAuthReleaseChannelRaw = CodexAuthReleaseChannel.stable.rawValue
+    @AppStorage(AppThemeSettings.presetKey) private var appThemePresetRaw = AppThemePreset.fallback.rawValue
 
     private let codexAuthToolManager = CodexAuthToolManager.live()
 
@@ -12,6 +13,32 @@ struct CodexResourceSettingsView: View {
 
     private var selectedCodexAuthReleaseChannel: CodexAuthReleaseChannel {
         CodexAuthReleaseChannel(storedValue: codexAuthReleaseChannelRaw)
+    }
+
+    private var selectedThemePreset: AppThemePreset {
+        AppThemePreset(storedValue: appThemePresetRaw)
+    }
+
+    private var appearanceBinding: Binding<AppThemeAppearance> {
+        Binding {
+            selectedThemePreset.appearance
+        } set: { newAppearance in
+            appThemePresetRaw = AppThemePreset(
+                appearance: newAppearance,
+                contrast: selectedThemePreset.contrast
+            ).rawValue
+        }
+    }
+
+    private var contrastBinding: Binding<AppThemeContrast> {
+        Binding {
+            selectedThemePreset.contrast
+        } set: { newContrast in
+            appThemePresetRaw = AppThemePreset(
+                appearance: selectedThemePreset.appearance,
+                contrast: newContrast
+            ).rawValue
+        }
     }
 
     private var codexExecutablePath: String {
@@ -24,6 +51,26 @@ struct CodexResourceSettingsView: View {
 
     var body: some View {
         Form {
+            Section {
+                Picker("Mode", selection: appearanceBinding) {
+                    ForEach(AppThemeAppearance.allCases) { appearance in
+                        Text(appearance.displayName).tag(appearance)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Picker("Contrast", selection: contrastBinding) {
+                    ForEach(AppThemeContrast.allCases) { contrast in
+                        Text(contrast.displayName).tag(contrast)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                ThemePreviewStrip(preset: selectedThemePreset)
+            } header: {
+                Text("Theme")
+            }
+
             Section {
                 VStack(alignment: .leading, spacing: ThemeTokens.Spacing.tight) {
                     Text("Codex resources path")
@@ -89,5 +136,43 @@ struct CodexResourceSettingsView: View {
         .formStyle(.grouped)
         .padding(ThemeTokens.Spacing.section)
         .frame(width: 560)
+        .background(ThemeTokens.Colors.appBackground)
+    }
+}
+
+private struct ThemePreviewStrip: View {
+    let preset: AppThemePreset
+
+    private var colors: AppThemeSemanticColors {
+        preset.semanticColors
+    }
+
+    private var palette: AppThemeRawPalette {
+        preset.palette
+    }
+
+    var body: some View {
+        HStack(spacing: ThemeTokens.Spacing.tight) {
+            previewSwatch(colors.panelSurface)
+            previewSwatch(colors.fieldSurface)
+            previewSwatch(palette.orange)
+            previewSwatch(palette.blue)
+        }
+        .padding(ThemeTokens.Spacing.tight)
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+        .background(Color(hex: colors.panelSurface))
+        .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous)
+                .stroke(Color(hex: colors.border), lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(preset.displayName)
+    }
+
+    private func previewSwatch(_ hex: UInt32) -> some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .fill(Color(hex: hex))
+            .frame(width: 34, height: 20)
     }
 }

@@ -1,7 +1,7 @@
 ---
 title: "Learnings"
 description: "Repo-specific lessons for future agents working on zsh-codexauth-helper."
-last_updated: "2026-06-04"
+last_updated: "2026-07-07"
 ---
 
 # Learnings
@@ -91,6 +91,10 @@ Template:
 
 ## UI Lessons
 
+- 2026-07-07: Symptom: Everforest Dark Hard looked too bright after adding theme presets.
+  Root cause: calm surfaces used too many raised roles (`bg1`, `bg2`, and `bg3`), so the rail, fields, chrome, and rows felt closer to Medium than Hard.
+  Guardrail: for Dark Hard, keep the app canvas, rail, and terminal well on `bg_dim`; keep panels, cards, fields, and chrome on `bg0`; use `bg1` for quiet borders; reserve brighter layers for hover, focus, or selected states. Verify with `ThemeTokensTests.darkHardCalmSurfacesUseOnlyBgDimAndBg0` and a real window screenshot.
+
 - 2026-07-04: Symptom: **Restart Codex** looked available while Codex App was closed, even though **Open Codex** was the only useful action.
   Root cause: the command rail showed the restart action without connecting it to `CodexAppMonitor.state`, and the custom plain button did not define a clear disabled appearance.
   Guardrail: derive restart availability from `CodexAppState.canRestart`, use SwiftUI `disabled(_:)` for interaction, and let `CommandButton` read `EnvironmentValues.isEnabled` for one consistent muted state.
@@ -108,6 +112,10 @@ Template:
   Guardrail: for live SwiftUI search fields, verify the user path with coordinate click plus `type_text`, then confirm the filtered count and rows with `take_ax_snapshot`.
 
 ## Testing Lessons
+
+- 2026-07-07: Symptom: after adding a new Swift Testing file, the focused `xcodebuild test` path can look useful while the new tests are not wired into the generated Xcode project yet.
+  Root cause: this repo uses XcodeGen, so new source and test files are invisible to Xcode until `xcodegen generate` refreshes `ZshCodexAuthHelper.xcodeproj`.
+  Guardrail: after adding Swift source or test files, run `xcodegen generate`, then run a suite-level filter and confirm the Swift Testing log says `Test run with N tests`.
 
 - 2026-07-04: Symptom: a method-level `xcodebuild -only-testing` filter printed `TEST SUCCEEDED` but ran zero Swift Testing tests.
   Root cause: the method selector did not match the Swift Testing function in this app-hosted test target, so it proved compilation only.

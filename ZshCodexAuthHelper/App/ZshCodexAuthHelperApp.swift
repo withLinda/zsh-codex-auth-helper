@@ -22,6 +22,11 @@ enum AppRuntime {
 @main
 struct ZshCodexAuthHelperApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @AppStorage(AppThemeSettings.presetKey) private var appThemePresetRaw = AppThemePreset.fallback.rawValue
+
+    private var selectedThemePreset: AppThemePreset {
+        AppThemePreset(storedValue: appThemePresetRaw)
+    }
 
     var body: some Scene {
         WindowGroup("Codex Auth Helper") {
@@ -30,7 +35,7 @@ struct ZshCodexAuthHelperApp: App {
             } else {
                 ContentView()
                     .frame(minWidth: 980, minHeight: 640)
-                    .preferredColorScheme(.dark)
+                    .preferredColorScheme(selectedThemePreset.colorScheme)
             }
         }
         .windowToolbarStyle(.unified)
@@ -40,7 +45,7 @@ struct ZshCodexAuthHelperApp: App {
 
         Settings {
             CodexResourceSettingsView()
-                .preferredColorScheme(.dark)
+                .preferredColorScheme(selectedThemePreset.colorScheme)
         }
     }
 }
