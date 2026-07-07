@@ -83,6 +83,45 @@ struct ThemeTokensTests {
             #expect(ThemeContrastAudit.contrastRatio(foreground: colors.onAccentText, background: colors.accent) >= 4.5)
         }
     }
+
+    @Test func semanticAccentRolesUseRequestedPaletteAccentsAndTints() {
+        for preset in AppThemePreset.allCases {
+            let palette = preset.palette
+            let colors = preset.semanticColors
+
+            #expect(colors.accent == palette.orange)
+            #expect(colors.accentSurface == palette.bgYellow)
+            #expect(colors.warningAccent == palette.yellow)
+            #expect(colors.warningSurface == palette.bgYellow)
+            #expect(colors.destructiveAccent == palette.red)
+            #expect(colors.destructiveSurface == palette.bgRed)
+            #expect(colors.successAccent == palette.aqua)
+            #expect(colors.successSurface == palette.bgGreen)
+            #expect(colors.infoAccent == palette.blue)
+            #expect(colors.infoSurface == palette.bgBlue)
+            #expect(colors.purpleAccent == palette.purple)
+            #expect(colors.purpleSurface == palette.bgPurple)
+        }
+    }
+
+    @Test func coloredSurfaceTextPassesWCAGAndDeltaLStarOnTintedSurfaces() {
+        for preset in AppThemePreset.allCases {
+            let colors = preset.semanticColors
+            let tintedSurfaces = [
+                colors.accentSurface,
+                colors.warningSurface,
+                colors.destructiveSurface,
+                colors.successSurface,
+                colors.infoSurface,
+                colors.purpleSurface
+            ]
+
+            for surface in tintedSurfaces {
+                #expect(ThemeContrastAudit.contrastRatio(foreground: colors.coloredSurfaceText, background: surface) >= 4.5)
+                #expect(ThemeContrastAudit.deltaLStar(foreground: colors.coloredSurfaceText, background: surface) >= 40)
+            }
+        }
+    }
 }
 
 private enum ThemeContrastAudit {

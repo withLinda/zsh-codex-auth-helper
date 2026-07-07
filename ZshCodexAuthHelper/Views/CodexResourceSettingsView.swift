@@ -156,7 +156,11 @@ private struct ThemePreviewStrip: View {
             previewSwatch(colors.panelSurface)
             previewSwatch(colors.fieldSurface)
             previewSwatch(palette.orange)
+            previewSwatch(palette.yellow)
+            previewSwatch(palette.aqua)
             previewSwatch(palette.blue)
+            previewSwatch(palette.red)
+            previewSwatch(palette.purple)
         }
         .padding(ThemeTokens.Spacing.tight)
         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)

@@ -320,11 +320,23 @@ enum AppThemePreset: String, CaseIterable, Identifiable {
                 border: darkBorderColor(from: palette),
                 focusBorder: palette.grey2,
                 accent: palette.orange,
+                accentSurface: palette.bgYellow,
                 onAccentText: 0x1E2326,
+                coloredSurfaceText: darkColoredSurfaceText,
                 warning: palette.yellow,
+                warningAccent: palette.yellow,
+                warningSurface: palette.bgYellow,
                 destructive: palette.red,
+                destructiveAccent: palette.red,
+                destructiveSurface: palette.bgRed,
                 success: palette.aqua,
-                info: palette.blue
+                successAccent: palette.aqua,
+                successSurface: palette.bgGreen,
+                info: palette.blue,
+                infoAccent: palette.blue,
+                infoSurface: palette.bgBlue,
+                purpleAccent: palette.purple,
+                purpleSurface: palette.bgPurple
             )
         case .light:
             return AppThemeSemanticColors(
@@ -343,11 +355,23 @@ enum AppThemePreset: String, CaseIterable, Identifiable {
                 border: lightBorderColor(from: palette),
                 focusBorder: palette.fg,
                 accent: palette.orange,
+                accentSurface: palette.bgYellow,
                 onAccentText: 0x1E2326,
-                warning: palette.fg,
-                destructive: palette.fg,
-                success: palette.fg,
-                info: palette.fg
+                coloredSurfaceText: strongLightText,
+                warning: strongLightText,
+                warningAccent: palette.yellow,
+                warningSurface: palette.bgYellow,
+                destructive: strongLightText,
+                destructiveAccent: palette.red,
+                destructiveSurface: palette.bgRed,
+                success: strongLightText,
+                successAccent: palette.aqua,
+                successSurface: palette.bgGreen,
+                info: strongLightText,
+                infoAccent: palette.blue,
+                infoSurface: palette.bgBlue,
+                purpleAccent: palette.purple,
+                purpleSurface: palette.bgPurple
             )
         }
     }
@@ -360,6 +384,17 @@ enum AppThemePreset: String, CaseIterable, Identifiable {
             return 0x232A2E
         case .soft:
             return 0x293136
+        }
+    }
+
+    private var darkColoredSurfaceText: UInt32 {
+        switch contrast {
+        case .hard:
+            return 0xD3C6AA
+        case .medium:
+            return 0xEFEBD4
+        case .soft:
+            return 0xF3EAD3
         }
     }
 
@@ -432,11 +467,23 @@ struct AppThemeSemanticColors: Equatable {
     let border: UInt32
     let focusBorder: UInt32
     let accent: UInt32
+    let accentSurface: UInt32
     let onAccentText: UInt32
+    let coloredSurfaceText: UInt32
     let warning: UInt32
+    let warningAccent: UInt32
+    let warningSurface: UInt32
     let destructive: UInt32
+    let destructiveAccent: UInt32
+    let destructiveSurface: UInt32
     let success: UInt32
+    let successAccent: UInt32
+    let successSurface: UInt32
     let info: UInt32
+    let infoAccent: UInt32
+    let infoSurface: UInt32
+    let purpleAccent: UInt32
+    let purpleSurface: UInt32
 }
 
 enum ThemeTokens {
@@ -513,24 +560,72 @@ enum ThemeTokens {
             color(\.accent)
         }
 
+        static var accentSurface: Color {
+            color(\.accentSurface)
+        }
+
         static var onAccentText: Color {
             color(\.onAccentText)
+        }
+
+        static var coloredSurfaceText: Color {
+            color(\.coloredSurfaceText)
         }
 
         static var warning: Color {
             color(\.warning)
         }
 
+        static var warningAccent: Color {
+            color(\.warningAccent)
+        }
+
+        static var warningSurface: Color {
+            color(\.warningSurface)
+        }
+
         static var destructive: Color {
             color(\.destructive)
+        }
+
+        static var destructiveAccent: Color {
+            color(\.destructiveAccent)
+        }
+
+        static var destructiveSurface: Color {
+            color(\.destructiveSurface)
         }
 
         static var success: Color {
             color(\.success)
         }
 
+        static var successAccent: Color {
+            color(\.successAccent)
+        }
+
+        static var successSurface: Color {
+            color(\.successSurface)
+        }
+
         static var info: Color {
             color(\.info)
+        }
+
+        static var infoAccent: Color {
+            color(\.infoAccent)
+        }
+
+        static var infoSurface: Color {
+            color(\.infoSurface)
+        }
+
+        static var purpleAccent: Color {
+            color(\.purpleAccent)
+        }
+
+        static var purpleSurface: Color {
+            color(\.purpleSurface)
         }
 
         static var terminalBackground: Color {

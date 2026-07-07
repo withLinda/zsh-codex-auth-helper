@@ -1,7 +1,7 @@
 ---
 title: "Learnings"
 description: "Repo-specific lessons for future agents working on zsh-codexauth-helper."
-last_updated: "2026-07-07"
+last_updated: "2026-07-08"
 ---
 
 # Learnings
@@ -51,6 +51,10 @@ Template:
   Root cause: this repo is XcodeGen-managed, and generated project files must be refreshed.
   Guardrail: after adding Swift source or test files, run `xcodegen generate` before final verification.
 
+- 2026-07-08: Symptom: mounted-DMG verification failed at `mkdir /Volumes/CodexAuthHelper-v2026.07.08.1` with `Permission denied` after stapling and Gatekeeper checks had already passed.
+  Root cause: the managed shell could not create a custom folder directly under `/Volumes`.
+  Guardrail: for release verification, create the mount point under `/private/tmp`, then run `hdiutil attach -nobrowse -mountpoint /private/tmp/<name> dist/<dmg>` and detach it after checking the app inside the DMG.
+
 - 2026-06-02: Symptom: Swift Testing produced recursive macro expansion when nesting `#require`.
   Root cause: nested `#require(...)` calls inside another `#require(...)` can trip macro expansion.
   Guardrail: unwrap optional values in separate steps or use safe force unwraps in controlled test fixture setup.
@@ -90,6 +94,14 @@ Template:
   Guardrail: Switch should treat a different active auth file as normal while switching. It should refresh only when the selected saved access token is expired, within five minutes of expiry, or unreadable with `last_refresh` older than eight days. Use Health Check for strict validation of all saved OAuth accounts.
 
 ## UI Lessons
+
+- 2026-07-08: Symptom: adding accent fills made some light-mode buttons and badges colorful but risked weak text/icon contrast.
+  Root cause: Everforest Light accent colors are not safe as normal text on pale tinted surfaces, and some Dark Soft tinted surfaces need stronger text than the default foreground.
+  Guardrail: keep accent colors as rails, borders, fills, and state cues; use `coloredSurfaceText` for text/icons on tinted surfaces. Verify with `ThemeTokensTests.coloredSurfaceTextPassesWCAGAndDeltaLStarOnTintedSurfaces`.
+
+- 2026-07-08: Symptom: visual verification could not find the launched app under `ZshCodexAuthHelper`, and `screencapture -l` failed after a relaunch with an old window id.
+  Root cause: the running window/app owner is named `Codex Auth Helper`, and macOS assigns a new window id after each relaunch.
+  Guardrail: after relaunching, query windows with `Codex Auth Helper`, then capture the fresh window id. Do not reuse a previous `screencapture -l` id.
 
 - 2026-07-07: Symptom: Everforest Dark Hard looked too bright after adding theme presets.
   Root cause: calm surfaces used too many raised roles (`bg1`, `bg2`, and `bg3`), so the rail, fields, chrome, and rows felt closer to Medium than Hard.

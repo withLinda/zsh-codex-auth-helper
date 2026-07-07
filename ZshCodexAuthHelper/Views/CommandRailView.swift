@@ -47,6 +47,7 @@ struct CommandRailView: View {
                     title: "Save / Update Login",
                     systemImage: "tray.and.arrow.down",
                     tint: ThemeTokens.Colors.accent,
+                    surface: ThemeTokens.Colors.accentSurface,
                     action: runImport
                 )
                 .disabled(isRunning || canImport == false)
@@ -61,6 +62,7 @@ struct CommandRailView: View {
                     title: "Open Blank Incognito",
                     systemImage: "eye.slash",
                     tint: ThemeTokens.Colors.accent,
+                    surface: ThemeTokens.Colors.accentSurface,
                     action: runOpenBlankIncognito
                 )
                 .help("Open a blank Chrome Incognito window with your normal Chrome profile")
@@ -76,13 +78,20 @@ struct CommandRailView: View {
                 CommandButton(
                     title: "Restart Codex",
                     systemImage: "power",
-                    tint: ThemeTokens.Colors.warning,
+                    tint: ThemeTokens.Colors.warningAccent,
+                    surface: ThemeTokens.Colors.warningSurface,
                     action: runRestart
                 )
                 .disabled(codexAppState.canRestart == false)
                 codexAppControlButton
                 CommandButton(title: "Update codex-auth", systemImage: "arrow.down.circle", action: runUpdateCodexAuth)
-                CommandButton(title: "Health Check", systemImage: "checkmark.shield", tint: ThemeTokens.Colors.success, action: runHealthCheck)
+                CommandButton(
+                    title: "Health Check",
+                    systemImage: "checkmark.shield",
+                    tint: ThemeTokens.Colors.successAccent,
+                    surface: ThemeTokens.Colors.successSurface,
+                    action: runHealthCheck
+                )
             }
             .disabled(isRunning)
 
@@ -105,14 +114,16 @@ struct CommandRailView: View {
             CommandButton(
                 title: "Force Close Codex",
                 systemImage: "xmark.circle",
-                tint: ThemeTokens.Colors.destructive,
+                tint: ThemeTokens.Colors.destructiveAccent,
+                surface: ThemeTokens.Colors.destructiveSurface,
                 action: runForceCloseCodex
             )
         case .closed:
             CommandButton(
                 title: "Open Codex",
                 systemImage: "arrow.up.forward.app",
-                tint: ThemeTokens.Colors.info,
+                tint: ThemeTokens.Colors.infoAccent,
+                surface: ThemeTokens.Colors.infoSurface,
                 action: runOpenCodex
             )
         }
@@ -126,7 +137,7 @@ private struct AuthSessionIndicatorView: View {
         HStack(spacing: ThemeTokens.Spacing.normal) {
             Image(systemName: info.needsAttention ? "exclamationmark.triangle" : "person.crop.circle")
                 .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(info.needsAttention ? ThemeTokens.Colors.warning : ThemeTokens.Colors.info)
+                .foregroundStyle(info.needsAttention ? ThemeTokens.Colors.warningAccent : ThemeTokens.Colors.infoAccent)
                 .frame(width: 20)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -152,7 +163,7 @@ private struct AuthSessionIndicatorView: View {
         .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous)
-                .stroke(info.needsAttention ? ThemeTokens.Colors.warning.opacity(0.55) : ThemeTokens.Colors.border, lineWidth: 1)
+                .stroke(info.needsAttention ? ThemeTokens.Colors.warningAccent.opacity(0.55) : ThemeTokens.Colors.border, lineWidth: 1)
         }
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Auth account")
@@ -192,27 +203,36 @@ private struct CommandButton: View {
 
     let title: String
     let systemImage: String
-    var tint = ThemeTokens.Colors.info
+    var tint = ThemeTokens.Colors.infoAccent
+    var surface = ThemeTokens.Colors.infoSurface
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             HStack(spacing: ThemeTokens.Spacing.normal) {
+                Capsule(style: .continuous)
+                    .fill(isEnabled ? tint : ThemeTokens.Colors.border)
+                    .frame(width: 3, height: 22)
+
                 Image(systemName: systemImage)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(isEnabled ? tint : ThemeTokens.Colors.mutedText)
+                    .foregroundStyle(isEnabled ? ThemeTokens.Colors.coloredSurfaceText : ThemeTokens.Colors.mutedText)
                     .frame(width: 20)
 
                 Text(title)
                     .font(.callout.weight(.medium))
-                    .foregroundStyle(isEnabled ? ThemeTokens.Colors.primaryText : ThemeTokens.Colors.mutedText)
+                    .foregroundStyle(isEnabled ? ThemeTokens.Colors.coloredSurfaceText : ThemeTokens.Colors.mutedText)
 
                 Spacer()
             }
             .padding(.horizontal, ThemeTokens.Spacing.normal)
             .frame(minHeight: 44)
-            .background(isEnabled ? ThemeTokens.Colors.nestedSurface : ThemeTokens.Colors.panelSurface)
+            .background(isEnabled ? surface : ThemeTokens.Colors.panelSurface)
             .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous)
+                    .stroke(isEnabled ? tint.opacity(0.28) : ThemeTokens.Colors.border.opacity(0.6), lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
         .contentShape(Rectangle())

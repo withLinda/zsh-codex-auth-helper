@@ -23,6 +23,10 @@ struct AccountDashboardView: View {
 
     private var header: some View {
         HStack(spacing: ThemeTokens.Spacing.normal) {
+            Capsule(style: .continuous)
+                .fill(ThemeTokens.Colors.infoAccent)
+                .frame(width: 4, height: 34)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("Saved Accounts")
                     .font(.title3.weight(.semibold))
@@ -44,7 +48,7 @@ struct AccountDashboardView: View {
             Button(action: refresh) {
                 Label("Refresh", systemImage: "arrow.clockwise")
             }
-            .buttonStyle(AccountHeaderButtonStyle(tint: ThemeTokens.Colors.info))
+            .buttonStyle(AccountHeaderButtonStyle(tint: ThemeTokens.Colors.infoAccent, surface: ThemeTokens.Colors.infoSurface))
             .disabled(isRunning)
             .help("Refresh saved accounts")
         }
@@ -150,7 +154,7 @@ private struct AccountSearchField: View {
         HStack(spacing: ThemeTokens.Spacing.tight) {
             Image(systemName: "magnifyingglass")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(ThemeTokens.Colors.supportText)
+                .foregroundStyle(ThemeTokens.Colors.infoAccent)
                 .frame(width: 18)
 
             TextField("Search saved accounts", text: $text)
@@ -179,7 +183,7 @@ private struct AccountSearchField: View {
         .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: ThemeTokens.Radius.field, style: .continuous)
-                .stroke(ThemeTokens.Colors.border, lineWidth: 1)
+                .stroke(ThemeTokens.Colors.infoAccent.opacity(0.32), lineWidth: 1)
         }
     }
 }
@@ -199,7 +203,7 @@ private struct AccountRowView: View {
 
             Image(systemName: item.isActive ? "checkmark.circle.fill" : "person.crop.circle")
                 .font(.system(size: 18, weight: .semibold))
-                .foregroundStyle(item.isActive ? ThemeTokens.Colors.success : ThemeTokens.Colors.info)
+                .foregroundStyle(item.isActive ? ThemeTokens.Colors.successAccent : ThemeTokens.Colors.infoAccent)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -212,12 +216,22 @@ private struct AccountRowView: View {
                         .textSelection(.enabled)
 
                     if item.isActive {
-                        AccountStatusBadge(title: "Active", systemImage: "checkmark.circle.fill", tint: ThemeTokens.Colors.success)
+                        AccountStatusBadge(
+                            title: "Active",
+                            systemImage: "checkmark.circle.fill",
+                            tint: ThemeTokens.Colors.successAccent,
+                            surface: ThemeTokens.Colors.successSurface
+                        )
                     }
                 }
 
                 HStack(spacing: ThemeTokens.Spacing.tight) {
-                    AccountStatusBadge(title: item.planLabel, systemImage: item.isAPIKeyAccount ? "key.fill" : "creditcard", tint: ThemeTokens.Colors.warning)
+                    AccountStatusBadge(
+                        title: item.planLabel,
+                        systemImage: item.isAPIKeyAccount ? "key.fill" : "creditcard",
+                        tint: ThemeTokens.Colors.warningAccent,
+                        surface: ThemeTokens.Colors.warningSurface
+                    )
 
                     ForEach(item.subtitleParts, id: \.self) { part in
                         Text(part)
@@ -231,7 +245,12 @@ private struct AccountRowView: View {
 
             HStack(spacing: ThemeTokens.Spacing.tight) {
                 if item.isActive {
-                    AccountStatusBadge(title: "Current", systemImage: "checkmark", tint: ThemeTokens.Colors.success)
+                    AccountStatusBadge(
+                        title: "Current",
+                        systemImage: "checkmark",
+                        tint: ThemeTokens.Colors.successAccent,
+                        surface: ThemeTokens.Colors.successSurface
+                    )
                         .frame(width: 92, alignment: .center)
                 } else {
                     Button {
@@ -239,7 +258,7 @@ private struct AccountRowView: View {
                     } label: {
                         Label("Switch", systemImage: "arrow.triangle.2.circlepath")
                     }
-                    .buttonStyle(AccountRowButtonStyle(tint: ThemeTokens.Colors.info))
+                    .buttonStyle(AccountRowButtonStyle(tint: ThemeTokens.Colors.infoAccent, surface: ThemeTokens.Colors.infoSurface))
                     .disabled(isRunning)
                     .accessibilityLabel("Switch account")
                     .accessibilityHint("Switch to this saved account.")
@@ -252,7 +271,7 @@ private struct AccountRowView: View {
                 } label: {
                     Label("Remove", systemImage: "trash")
                 }
-                .buttonStyle(AccountRowButtonStyle(tint: ThemeTokens.Colors.destructive))
+                .buttonStyle(AccountRowButtonStyle(tint: ThemeTokens.Colors.destructiveAccent, surface: ThemeTokens.Colors.destructiveSurface))
                 .disabled(isRunning)
                 .accessibilityLabel("Remove account")
                 .accessibilityHint("Show a confirmation before removing this saved account.")
@@ -268,13 +287,22 @@ private struct AccountRowView: View {
         .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.nested, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: ThemeTokens.Radius.nested, style: .continuous)
-                .stroke(item.isActive ? ThemeTokens.Colors.success.opacity(0.45) : ThemeTokens.Colors.border, lineWidth: 1)
+                .stroke(item.isActive ? ThemeTokens.Colors.successAccent.opacity(0.45) : ThemeTokens.Colors.border, lineWidth: 1)
+        }
+        .overlay(alignment: .leading) {
+            if item.isActive {
+                Capsule(style: .continuous)
+                    .fill(ThemeTokens.Colors.successAccent)
+                    .frame(width: 4)
+                    .padding(.vertical, ThemeTokens.Spacing.normal)
+                    .padding(.leading, 5)
+            }
         }
     }
 
     private var rowBackground: Color {
         item.isActive
-            ? ThemeTokens.Colors.nestedSurface.opacity(0.95)
+            ? ThemeTokens.Colors.nestedSurface
             : ThemeTokens.Colors.panelSurface
     }
 }
@@ -283,20 +311,26 @@ private struct AccountStatusBadge: View {
     let title: String
     let systemImage: String
     let tint: Color
+    let surface: Color
 
     var body: some View {
-        Label(title, systemImage: systemImage)
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(tint)
-            .labelStyle(.titleAndIcon)
-            .padding(.horizontal, ThemeTokens.Spacing.tight)
-            .padding(.vertical, 4)
-            .background(ThemeTokens.Colors.fieldSurface)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .stroke(tint.opacity(0.25), lineWidth: 1)
-            }
+        HStack(spacing: 5) {
+            Image(systemName: systemImage)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(ThemeTokens.Colors.coloredSurfaceText)
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(ThemeTokens.Colors.coloredSurfaceText)
+        }
+        .padding(.horizontal, ThemeTokens.Spacing.tight)
+        .padding(.vertical, 4)
+        .background(surface)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(tint.opacity(0.28), lineWidth: 1)
+        }
     }
 }
 
@@ -309,7 +343,7 @@ private struct AccountEmptyStateView: View {
         VStack(spacing: ThemeTokens.Spacing.normal) {
             Image(systemName: systemImage)
                 .font(.system(size: 28, weight: .semibold))
-                .foregroundStyle(ThemeTokens.Colors.info)
+                .foregroundStyle(ThemeTokens.Colors.infoAccent)
 
             VStack(spacing: 4) {
                 Text(title)
@@ -328,33 +362,39 @@ private struct AccountEmptyStateView: View {
 
 private struct AccountHeaderButtonStyle: ButtonStyle {
     let tint: Color
+    let surface: Color
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.callout.weight(.medium))
-            .foregroundStyle(ThemeTokens.Colors.primaryText)
+            .foregroundStyle(ThemeTokens.Colors.coloredSurfaceText)
             .padding(.horizontal, ThemeTokens.Spacing.normal)
             .frame(minHeight: 36)
-            .background(tint.opacity(configuration.isPressed ? 0.24 : 0.16))
+            .background(surface)
             .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous)
+                    .stroke(tint.opacity(configuration.isPressed ? 0.42 : 0.28), lineWidth: 1)
+            }
             .opacity(configuration.isPressed ? 0.82 : 1)
     }
 }
 
 private struct AccountRowButtonStyle: ButtonStyle {
     let tint: Color
+    let surface: Color
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.caption.weight(.semibold))
-            .foregroundStyle(tint)
+            .foregroundStyle(ThemeTokens.Colors.coloredSurfaceText)
             .padding(.horizontal, ThemeTokens.Spacing.tight)
             .frame(maxWidth: .infinity, minHeight: 34)
-            .background(tint.opacity(configuration.isPressed ? 0.22 : 0.12))
+            .background(surface)
             .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous)
-                    .stroke(tint.opacity(0.25), lineWidth: 1)
+                    .stroke(tint.opacity(configuration.isPressed ? 0.42 : 0.28), lineWidth: 1)
             }
             .opacity(configuration.isPressed ? 0.84 : 1)
     }

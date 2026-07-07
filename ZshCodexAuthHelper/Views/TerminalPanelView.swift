@@ -37,6 +37,10 @@ struct TerminalPanelView: View {
 
     private var terminalHeader: some View {
         HStack(spacing: ThemeTokens.Spacing.normal) {
+            Capsule(style: .continuous)
+                .fill(ThemeTokens.Colors.accent)
+                .frame(width: 4, height: 34)
+
             VStack(alignment: .leading, spacing: 4) {
                 Text("Terminal")
                     .font(.title3.weight(.semibold))
@@ -55,7 +59,7 @@ struct TerminalPanelView: View {
                 } label: {
                     Label("Open Incognito", systemImage: "eye.slash")
                 }
-                .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.accent))
+                .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.accent, surface: ThemeTokens.Colors.accentSurface))
                 .help("Open login link in Chrome Incognito")
                 .accessibilityLabel("Open login link in Chrome Incognito")
             }
@@ -71,7 +75,8 @@ struct TerminalPanelView: View {
                 }
                 .buttonStyle(
                     ToolbarButtonStyle(
-                        tint: copiedDeviceCode == deviceCode ? ThemeTokens.Colors.success : ThemeTokens.Colors.info
+                        tint: copiedDeviceCode == deviceCode ? ThemeTokens.Colors.successAccent : ThemeTokens.Colors.infoAccent,
+                        surface: copiedDeviceCode == deviceCode ? ThemeTokens.Colors.successSurface : ThemeTokens.Colors.infoSurface
                     )
                 )
                 .help("Copy one-time code")
@@ -83,7 +88,7 @@ struct TerminalPanelView: View {
             } label: {
                 Label("Stop", systemImage: "stop.fill")
             }
-            .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.destructive))
+            .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.destructiveAccent, surface: ThemeTokens.Colors.destructiveSurface))
             .disabled(runner.isRunning == false)
 
             Button {
@@ -91,7 +96,7 @@ struct TerminalPanelView: View {
             } label: {
                 Label("Clear", systemImage: "eraser")
             }
-            .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.info))
+            .buttonStyle(ToolbarButtonStyle(tint: ThemeTokens.Colors.infoAccent, surface: ThemeTokens.Colors.infoSurface))
         }
         .padding(.horizontal, ThemeTokens.Spacing.section)
         .padding(.vertical, ThemeTokens.Spacing.group)
@@ -261,16 +266,21 @@ struct TerminalPanelView: View {
 
 private struct ToolbarButtonStyle: ButtonStyle {
     let tint: Color
+    let surface: Color
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.callout.weight(.medium))
-            .foregroundStyle(ThemeTokens.Colors.primaryText)
+            .foregroundStyle(ThemeTokens.Colors.coloredSurfaceText)
             .labelStyle(.titleAndIcon)
             .padding(.horizontal, ThemeTokens.Spacing.normal)
             .frame(minHeight: 34)
-            .background(tint.opacity(configuration.isPressed ? 0.28 : 0.16))
+            .background(surface)
             .clipShape(RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: ThemeTokens.Radius.button, style: .continuous)
+                    .stroke(tint.opacity(configuration.isPressed ? 0.42 : 0.28), lineWidth: 1)
+            }
     }
 }
 
