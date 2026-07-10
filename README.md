@@ -5,7 +5,8 @@
 
 It gives Codex App users a simple interface for login, save/update, switch, list, remove, restart, open, and force-close flows, while still showing the real terminal output so you always know what is happening.
 
-<img width="1093" height="929" alt="Snip20260711_1" src="https://github.com/user-attachments/assets/b5d8bbfb-0c4d-4319-8852-cdf7ea3674f4" />
+<img width="1093" height="929" alt="Snip20260711_1" src="https://github.com/user-attachments/assets/437de6c2-5953-4b13-80c4-6c9ca4f5213c" />
+
 
 ## Why Use It
 
