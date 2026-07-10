@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum CommandFactoryError: LocalizedError, Equatable {
@@ -27,15 +28,25 @@ struct CodexCommandFactory {
     private let resolver: ExecutableResolver
     private let homeDirectory: URL
     private let codexAuthToolManager: CodexAuthToolManager
+    private let applicationURLForBundleIdentifier: (String) -> URL?
+    private let isExecutableFile: (String) -> Bool
 
     init(
         resolver: ExecutableResolver = .init(),
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
-        codexAuthToolManager: CodexAuthToolManager = .live()
+        codexAuthToolManager: CodexAuthToolManager = .live(),
+        applicationURLForBundleIdentifier: @escaping (String) -> URL? = {
+            NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0)
+        },
+        isExecutableFile: @escaping (String) -> Bool = {
+            FileManager.default.isExecutableFile(atPath: $0)
+        }
     ) {
         self.resolver = resolver
         self.homeDirectory = homeDirectory
         self.codexAuthToolManager = codexAuthToolManager
+        self.applicationURLForBundleIdentifier = applicationURLForBundleIdentifier
+        self.isExecutableFile = isExecutableFile
     }
 
     static func live() -> CodexCommandFactory {
@@ -71,7 +82,10 @@ struct CodexCommandFactory {
     }
 
     func login(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) throws -> CommandDefinition {
-        let resourceDirectory = CodexResourceSettings.normalizedDirectory(codexResourceDirectory)
+        let resourceDirectory = CodexResourceSettings.resolvedDirectory(
+            codexResourceDirectory,
+            isExecutableFile: isExecutableFile
+        )
         let executable = try codexAuthExecutable()
         let arguments = ["login", "--device-auth"]
 
@@ -166,48 +180,14 @@ struct CodexCommandFactory {
     }
 
     func restartCodex(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) -> CommandDefinition {
-        let bundleIdentifier = "com.openai.codex"
-        let appBundlePath = CodexResourceSettings.codexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let bundleIdentifier = CodexResourceSettings.bundleIdentifier
+        let appBundlePath = resolvedCodexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let appDisplayName = CodexResourceSettings.appDisplayName(forAppBundlePath: appBundlePath)
         let script = """
         bundle_id=\(ShellQuoting.quote(bundleIdentifier))
-        app_bundle=\(ShellQuoting.quote(appBundlePath))
-        process_marker="${app_bundle}/Contents/"
+        \(codexProcessControlScript(appBundlePath: appBundlePath))
 
-        codexPids() {
-          /bin/ps -axo pid=,command= | /usr/bin/awk -v marker="$process_marker" '
-          {
-            pid = $1
-            command = $0
-            sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", command)
-            if (index(command, marker) == 1 || command ~ /\\/Codex\\.app\\/Contents\\//) {
-              print pid
-            }
-          }'
-        }
-
-        waitForCodexExit() {
-          local remaining="$1"
-          local delay="$2"
-          while (( remaining > 0 )); do
-            if [[ -z "$(codexPids)" ]]; then
-              return 0
-            fi
-            sleep "$delay"
-            remaining=$(( remaining - 1 ))
-          done
-          [[ -z "$(codexPids)" ]]
-        }
-
-        signalCodex() {
-          local signal="$1"
-          local pids
-          pids="$(codexPids)"
-          if [[ -n "$pids" ]]; then
-            /bin/kill "-$signal" ${(f)pids} 2>/dev/null || true
-          fi
-        }
-
-        /usr/bin/osascript -e 'tell application id "com.openai.codex" to quit' 2>/dev/null || true
+        /usr/bin/osascript -e 'tell application id "\(bundleIdentifier)" to quit' 2>/dev/null || true
         waitForCodexExit 30 0.1 || true
 
         if [[ -n "$(codexPids)" ]]; then
@@ -229,18 +209,19 @@ struct CodexCommandFactory {
 
         return CommandDefinition(
             id: "restart",
-            title: "Restart Codex",
+            title: "Restart \(appDisplayName)",
             systemImage: "power",
             executable: "/bin/zsh",
             arguments: ["-lc", script],
             risk: .restartsApplication,
-            displayCommand: "osascript -e 'tell application id \"\(bundleIdentifier)\" to quit'; wait for Codex to exit; open \(ShellQuoting.quote(appBundlePath))"
+            displayCommand: "osascript -e 'tell application id \"\(bundleIdentifier)\" to quit'; wait for \(appDisplayName) to exit; open \(ShellQuoting.quote(appBundlePath))"
         )
     }
 
     func openCodex(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) -> CommandDefinition {
-        let bundleIdentifier = "com.openai.codex"
-        let appBundlePath = CodexResourceSettings.codexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let bundleIdentifier = CodexResourceSettings.bundleIdentifier
+        let appBundlePath = resolvedCodexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let appDisplayName = CodexResourceSettings.appDisplayName(forAppBundlePath: appBundlePath)
         let script = """
         bundle_id=\(ShellQuoting.quote(bundleIdentifier))
         app_bundle=\(ShellQuoting.quote(appBundlePath))
@@ -254,7 +235,7 @@ struct CodexCommandFactory {
 
         return CommandDefinition(
             id: "open-codex",
-            title: "Open Codex",
+            title: "Open \(appDisplayName)",
             systemImage: "arrow.up.forward.app",
             executable: "/bin/zsh",
             arguments: ["-lc", script],
@@ -263,8 +244,56 @@ struct CodexCommandFactory {
     }
 
     func forceCloseCodex(codexResourceDirectory: String = CodexResourceSettings.defaultDirectory) -> CommandDefinition {
-        let appBundlePath = CodexResourceSettings.codexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let appBundlePath = resolvedCodexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let appDisplayName = CodexResourceSettings.appDisplayName(forAppBundlePath: appBundlePath)
         let script = """
+        \(codexProcessControlScript(appBundlePath: appBundlePath))
+
+        signalCodex TERM
+        waitForCodexExit 10 0.1 || true
+
+        if [[ -n "$(codexPids)" ]]; then
+          signalCodex KILL
+          waitForCodexExit 20 0.1 || true
+        fi
+        """
+
+        return CommandDefinition(
+            id: "force-close-codex",
+            title: "Force Close \(appDisplayName)",
+            systemImage: "xmark.circle",
+            executable: "/bin/zsh",
+            arguments: ["-lc", script],
+            risk: .destructive,
+            displayCommand: "force close \(appDisplayName) at \(ShellQuoting.quote(appBundlePath))"
+        )
+    }
+
+    private func resolvedCodexAppBundlePath(forResourceDirectory directory: String) -> String {
+        let normalizedDirectory = CodexResourceSettings.normalizedDirectory(directory)
+        let resolvedDirectory = CodexResourceSettings.resolvedDirectory(
+            directory,
+            isExecutableFile: isExecutableFile
+        )
+        let resolvedExecutablePath = CodexResourceSettings.codexExecutablePath(in: resolvedDirectory)
+
+        if isExecutableFile(resolvedExecutablePath) {
+            return CodexResourceSettings.codexAppBundlePath(forResourceDirectory: resolvedDirectory)
+        }
+
+        let usesKnownDefault = normalizedDirectory == CodexResourceSettings.defaultDirectory
+            || normalizedDirectory == CodexResourceSettings.legacyDefaultDirectory
+
+        if usesKnownDefault,
+           let registeredAppURL = applicationURLForBundleIdentifier(CodexResourceSettings.bundleIdentifier) {
+            return registeredAppURL.standardizedFileURL.path
+        }
+
+        return CodexResourceSettings.codexAppBundlePath(forResourceDirectory: resolvedDirectory)
+    }
+
+    private func codexProcessControlScript(appBundlePath: String) -> String {
+        """
         app_bundle=\(ShellQuoting.quote(appBundlePath))
         process_marker="${app_bundle}/Contents/"
 
@@ -274,7 +303,7 @@ struct CodexCommandFactory {
             pid = $1
             command = $0
             sub(/^[[:space:]]*[0-9]+[[:space:]]+/, "", command)
-            if (index(command, marker) == 1 || command ~ /\\/Codex\\.app\\/Contents\\//) {
+            if (index(command, marker) == 1) {
               print pid
             }
           }'
@@ -301,25 +330,7 @@ struct CodexCommandFactory {
             /bin/kill "-$signal" ${(f)pids} 2>/dev/null || true
           fi
         }
-
-        signalCodex TERM
-        waitForCodexExit 10 0.1 || true
-
-        if [[ -n "$(codexPids)" ]]; then
-          signalCodex KILL
-          waitForCodexExit 20 0.1 || true
-        fi
         """
-
-        return CommandDefinition(
-            id: "force-close-codex",
-            title: "Force Close Codex",
-            systemImage: "xmark.circle",
-            executable: "/bin/zsh",
-            arguments: ["-lc", script],
-            risk: .destructive,
-            displayCommand: "force close Codex at \(ShellQuoting.quote(appBundlePath))"
-        )
     }
 
     private func codexAuthExecutable() throws -> String {

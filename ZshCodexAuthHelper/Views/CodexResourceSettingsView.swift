@@ -137,6 +137,9 @@ struct CodexResourceSettingsView: View {
         .padding(ThemeTokens.Spacing.section)
         .frame(width: 560)
         .background(ThemeTokens.Colors.appBackground)
+        .onAppear {
+            codexResourceDirectory = CodexResourceSettings.resolvedDirectory(codexResourceDirectory)
+        }
     }
 }
 

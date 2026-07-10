@@ -32,6 +32,12 @@ struct ContentView: View {
         CodexAuthReleaseChannel(storedValue: codexAuthReleaseChannelRaw)
     }
 
+    private var codexAppDisplayName: String {
+        let resolvedDirectory = CodexResourceSettings.resolvedDirectory(codexResourceDirectory)
+        let appBundlePath = CodexResourceSettings.codexAppBundlePath(forResourceDirectory: resolvedDirectory)
+        return CodexResourceSettings.appDisplayName(forAppBundlePath: appBundlePath)
+    }
+
     init(
         commandFactory: CodexCommandFactory = .live(),
         switchPreflightValidator: AuthSwitchPreflightValidator = AuthSwitchPreflightValidator(),
@@ -55,6 +61,7 @@ struct ContentView: View {
                 authFilePath: $authFilePath,
                 authSession: authSessionMonitor.info,
                 codexAppState: codexAppMonitor.state,
+                codexAppDisplayName: codexAppDisplayName,
                 isRunning: isBusy,
                 runLogin: runLogin,
                 runImport: runImport,
@@ -105,8 +112,12 @@ struct ContentView: View {
             Text("Remove \(account.email) from saved accounts. This does not delete the OpenAI account.")
         }
         .onAppear {
+            let resolvedDirectory = CodexResourceSettings.resolvedDirectory(codexResourceDirectory)
+            if resolvedDirectory != codexResourceDirectory {
+                codexResourceDirectory = resolvedDirectory
+            }
             authSessionMonitor.start(authFilePath: authFilePath)
-            codexAppMonitor.start(codexResourceDirectory: codexResourceDirectory)
+            codexAppMonitor.start(codexResourceDirectory: resolvedDirectory)
             accountListStore.start()
         }
         .onDisappear {

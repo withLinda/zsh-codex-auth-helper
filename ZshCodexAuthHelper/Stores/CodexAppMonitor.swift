@@ -20,7 +20,6 @@ struct CodexRunningApplicationSnapshot: Equatable {
 final class CodexAppMonitor: ObservableObject {
     @Published private(set) var state: CodexAppState = .closed
 
-    private let codexBundleIdentifier = "com.openai.codex"
     private let runningApplications: () -> [CodexRunningApplicationSnapshot]
     private var codexResourceDirectory = CodexResourceSettings.defaultDirectory
     private var observerTokens: [NSObjectProtocol] = []
@@ -96,7 +95,7 @@ final class CodexAppMonitor: ObservableObject {
             return false
         }
 
-        if application.bundleIdentifier == codexBundleIdentifier {
+        if application.bundleIdentifier == CodexResourceSettings.bundleIdentifier {
             return true
         }
 

@@ -59,6 +59,7 @@ struct ExecutableResolver {
 
     private var fallbackPaths: [String] {
         [
+            "/Applications/ChatGPT.app/Contents/Resources",
             "/Applications/Codex.app/Contents/Resources",
             "/opt/homebrew/bin",
             "/usr/local/bin",

@@ -28,8 +28,8 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Health Check**: checks every saved ChatGPT OAuth account one at a time, refreshes valid tokens, and ends with sorted account summaries.
 - **Update codex-auth**: installs or updates the app-owned `codex-auth` tool without changing your global terminal copy.
 - **Remove Account**: prepares `codex-auth remove` so you can type the alias.
-- **Restart Codex**: quits Codex App, waits for its helper processes to exit, and then reopens it after account changes.
-- **Open / Force Close Codex**: shows the right action for the current Codex App state.
+- **Restart ChatGPT**: quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and then reopens it after account changes.
+- **Open / Force Close ChatGPT**: shows the right action for the current ChatGPT desktop app state.
 - **Interactive terminal**: send input to running commands from the app.
 - **Link detection**: open the latest detected login link in Chrome Incognito with one click.
 - **One-time code detection**: copy detected login codes with one click.
@@ -58,13 +58,13 @@ For most users, this is the easiest way to install or update the app. You do not
 
 Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the newest DMG file. For this release, download:
 
-- `CodexAuthHelper-v2026.07.08.1.dmg`
+- `CodexAuthHelper-v2026.07.10.1.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.07.08.1.dmg.sha256`
+- `CodexAuthHelper-v2026.07.10.1.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
@@ -111,7 +111,7 @@ Use this flow the first time:
 6. If you want to set or change an alias, use **Save / Update Login**. The default auth file is `~/.codex/auth.json`.
 7. Click **List Accounts** to confirm the saved account appears.
 8. Click **Switch Account...**, type the alias, email, account name, or row number, then press Return.
-9. Click **Restart Codex** so Codex App fully reloads with the selected account.
+9. Click **Restart ChatGPT** so the ChatGPT desktop app fully reloads with the selected Codex account.
 
 ## Complete Usage Guide
 
@@ -127,9 +127,9 @@ Use this flow the first time:
 - **Login** runs `codex-auth login --device-auth`. It signs in through the browser using an isolated codex-auth login flow, then saves the finished login through `codex-auth`. Use **Save / Update Login** only when you want to set an alias manually or update a chosen auth file.
 - **Open Blank Incognito** opens a blank Chrome Incognito window. It uses the same Chrome profile as your normal Chrome app, so saved passwords and passkeys can still be offered by Chrome.
 - **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching. For OAuth accounts, it refreshes only when Codex would need renewal now: when the access token is expired or within five minutes of expiry, or when expiry cannot be read and `last_refresh` is older than eight days. If the saved access token is still fresh, Switch does not ask OpenAI and does not spend the refresh token. If `~/.codex/auth.json` is a newer matching login, the app copies it into the saved account file first. The terminal prints safe `Switch check:` lines, but never prints full tokens. If OpenAI accepts a needed refresh, the app saves the new rotated token, then runs `codex-auth switch`. If a needed refresh finds an expired, already used, or revoked token, the wrong saved file, or a save failure, the switch is blocked. API-key accounts skip OAuth refresh because they do not use refresh tokens. If more than one account matches, use a more specific value.
-- **Restart Codex** quits Codex App, waits for its helper processes to exit, and opens it again. Use this after switching accounts. A simple way to think about it: switching changes the key on disk, and restarting makes Codex pick up the new key.
-- **Open Codex** appears when Codex App is closed. It opens Codex without changing accounts.
-- **Force Close Codex** appears when Codex App is open. Use it only when Codex is stuck, did not close during restart, or still seems to be using the wrong account. It can kill Codex processes directly.
+- **Restart ChatGPT** quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and opens it again. Use this after switching accounts. A simple way to think about it: switching changes the key on disk, and restarting makes Codex pick up the new key.
+- **Open ChatGPT** appears when the ChatGPT desktop app is closed. It opens ChatGPT without changing accounts.
+- **Force Close ChatGPT** appears when the ChatGPT desktop app is open. Use it only when ChatGPT is stuck, did not close during restart, or Codex still seems to be using the wrong account. It can kill the app processes directly.
 - **List Accounts** runs `codex-auth list`. Use it to see saved accounts and row numbers.
 - **Search saved accounts** filters the visible saved-account rows. Search by email, alias, account name, plan, or auth mode. Empty search text shows every saved account again.
 - **Update codex-auth** runs `npm install --global --prefix ~/Library/Application Support/CodexAuthHelper/codex-auth-tool @loongphy/codex-auth@latest` or `@next`, depending on the Settings channel. It updates only the app-owned tool. It does not run `sudo` and does not change your global terminal `codex-auth`.
@@ -148,12 +148,12 @@ Use this flow the first time:
 
 ### Settings
 
-If Codex App is not installed at `/Applications/Codex.app`, open **Codex Auth Helper > Settings** and update **Codex resources path**.
+If the ChatGPT desktop app is not installed at `/Applications/ChatGPT.app`, open **Codex Auth Helper > Settings** and update **Codex resources path**. Old `/Applications/Codex.app` installs still work.
 
 The default path is:
 
 ```text
-/Applications/Codex.app/Contents/Resources
+/Applications/ChatGPT.app/Contents/Resources
 ```
 
 Settings also has a `codex-auth` update channel:
@@ -209,9 +209,9 @@ If an account needs login again, use **Login** and finish the browser login. Use
 - **Switch Account says the refresh token was already used**: this can happen only when Switch had to refresh because the saved access token needed renewal. Click **Login**, finish browser login, then switch again. If this happens every time, read the `Switch check:` lines. They should show whether the saved account file was stale, whether `~/.codex/auth.json` was newer, whether saving the new token failed, or whether another Codex or `codex-auth` process probably used the token first.
 - **Switch Account says the saved auth file does not match the selected account**: the saved file may belong to a different account. The app blocks the switch because switching from the wrong saved file is unsafe. Click **Login** for the selected account, then use **List Accounts** or **Save / Update Login** if you need to rebuild the saved registry or alias.
 - **Chrome is missing**: install Google Chrome, or copy the login link from the terminal output and open it manually.
-- **Codex opens from the wrong place**: open **Codex Auth Helper > Settings** and set the Codex resources path for your Codex App install.
+- **ChatGPT opens from the wrong place**: open **Codex Auth Helper > Settings** and set the Codex resources path for your ChatGPT or older Codex app install.
 - **Health Check says `needs login`**: the saved login cannot refresh. Log in again, then save or update that account.
-- **Codex still uses the old account after switching**: click **Restart Codex**. Use **Force Close Codex** only if Codex does not close normally.
+- **Codex still uses the old account after switching**: click **Restart ChatGPT**. Use **Force Close ChatGPT** only if the ChatGPT desktop app does not close normally.
 
 ## Built On codex-auth
 

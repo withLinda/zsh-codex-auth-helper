@@ -6,6 +6,7 @@ struct CommandRailView: View {
 
     let authSession: AuthSessionInfo
     let codexAppState: CodexAppState
+    let codexAppDisplayName: String
     let isRunning: Bool
     let runLogin: () -> Void
     let runImport: () -> Void
@@ -76,7 +77,7 @@ struct CommandRailView: View {
 
                 CommandButton(title: "Login", systemImage: "person.crop.circle.badge.plus", action: runLogin)
                 CommandButton(
-                    title: "Restart Codex",
+                    title: "Restart \(codexAppDisplayName)",
                     systemImage: "power",
                     tint: ThemeTokens.Colors.warningAccent,
                     surface: ThemeTokens.Colors.warningSurface,
@@ -112,7 +113,7 @@ struct CommandRailView: View {
         switch codexAppState {
         case .open:
             CommandButton(
-                title: "Force Close Codex",
+                title: "Force Close \(codexAppDisplayName)",
                 systemImage: "xmark.circle",
                 tint: ThemeTokens.Colors.destructiveAccent,
                 surface: ThemeTokens.Colors.destructiveSurface,
@@ -120,7 +121,7 @@ struct CommandRailView: View {
             )
         case .closed:
             CommandButton(
-                title: "Open Codex",
+                title: "Open \(codexAppDisplayName)",
                 systemImage: "arrow.up.forward.app",
                 tint: ThemeTokens.Colors.infoAccent,
                 surface: ThemeTokens.Colors.infoSurface,

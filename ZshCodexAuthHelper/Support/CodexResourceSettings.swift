@@ -2,7 +2,9 @@ import Foundation
 
 enum CodexResourceSettings {
     static let userDefaultsKey = "codexResourceDirectory"
-    static let defaultDirectory = "/Applications/Codex.app/Contents/Resources"
+    static let bundleIdentifier = "com.openai.codex"
+    static let defaultDirectory = "/Applications/ChatGPT.app/Contents/Resources"
+    static let legacyDefaultDirectory = "/Applications/Codex.app/Contents/Resources"
 
     static func normalizedDirectory(_ directory: String) -> String {
         let trimmedDirectory = directory.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -10,6 +12,28 @@ enum CodexResourceSettings {
             return defaultDirectory
         }
         return NSString(string: trimmedDirectory).expandingTildeInPath
+    }
+
+    static func resolvedDirectory(
+        _ directory: String,
+        isExecutableFile: (String) -> Bool = { FileManager.default.isExecutableFile(atPath: $0) }
+    ) -> String {
+        let normalizedDirectory = normalizedDirectory(directory)
+        let legacyExecutablePath = codexExecutablePath(in: legacyDefaultDirectory)
+        let currentExecutablePath = codexExecutablePath(in: defaultDirectory)
+        if normalizedDirectory == legacyDefaultDirectory,
+           isExecutableFile(legacyExecutablePath) == false,
+           isExecutableFile(currentExecutablePath) {
+            return defaultDirectory
+        }
+
+        if normalizedDirectory == defaultDirectory,
+           isExecutableFile(currentExecutablePath) == false,
+           isExecutableFile(legacyExecutablePath) {
+            return legacyDefaultDirectory
+        }
+
+        return normalizedDirectory
     }
 
     static func codexExecutablePath(in directory: String) -> String {
@@ -36,5 +60,12 @@ enum CodexResourceSettings {
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .path
+    }
+
+    static func appDisplayName(forAppBundlePath path: String) -> String {
+        let appName = URL(fileURLWithPath: path)
+            .deletingPathExtension()
+            .lastPathComponent
+        return appName.isEmpty ? "ChatGPT" : appName
     }
 }

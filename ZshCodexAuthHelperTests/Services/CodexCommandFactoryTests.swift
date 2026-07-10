@@ -74,7 +74,7 @@ struct CodexCommandFactoryTests {
         let resolver = ExecutableResolver(
             environmentPath: "/usr/bin:/bin",
             fileExists: {
-                $0 == "/Applications/Codex.app/Contents/Resources/codex" ||
+                $0 == "/Applications/ChatGPT.app/Contents/Resources/codex" ||
                     $0 == "/opt/homebrew/bin/codex-auth"
             }
         )
@@ -88,7 +88,7 @@ struct CodexCommandFactoryTests {
 
         #expect(command.executable == "/opt/homebrew/bin/codex-auth")
         #expect(command.arguments == ["login", "--device-auth"])
-        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin:/bin")
+        #expect(command.environment["PATH"] == "/Applications/ChatGPT.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin:/bin")
         #expect(command.displayCommand.contains("codex-auth login --device-auth"))
     }
 
@@ -155,7 +155,7 @@ struct CodexCommandFactoryTests {
         let resolver = ExecutableResolver(
             environmentPath: "/usr/bin:/bin",
             fileExists: {
-                $0 == "/Applications/Codex.app/Contents/Resources/codex" ||
+                $0 == "/Applications/ChatGPT.app/Contents/Resources/codex" ||
                     $0 == "/opt/homebrew/bin/codex-auth"
             }
         )
@@ -167,7 +167,29 @@ struct CodexCommandFactoryTests {
         let command = try factory.login(codexResourceDirectory: "   ")
 
         #expect(command.executable == "/opt/homebrew/bin/codex-auth")
-        #expect(command.environment["PATH"] == "/Applications/Codex.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin:/bin")
+        #expect(command.environment["PATH"] == "/Applications/ChatGPT.app/Contents/Resources:/Users/linda/Library/Application Support/CodexAuthHelper/codex-auth-tool/bin:/opt/homebrew/bin:/usr/bin:/bin")
+    }
+
+    @Test func oldDefaultResourceDirectoryMigratesWhenOnlyChatGPTCodexExists() {
+        let resolvedDirectory = CodexResourceSettings.resolvedDirectory(
+            CodexResourceSettings.legacyDefaultDirectory,
+            isExecutableFile: { path in
+                path == "/Applications/ChatGPT.app/Contents/Resources/codex"
+            }
+        )
+
+        #expect(resolvedDirectory == CodexResourceSettings.defaultDirectory)
+    }
+
+    @Test func oldDefaultResourceDirectoryStaysWhenLegacyCodexStillExists() {
+        let resolvedDirectory = CodexResourceSettings.resolvedDirectory(
+            CodexResourceSettings.legacyDefaultDirectory,
+            isExecutableFile: { path in
+                path == "/Applications/Codex.app/Contents/Resources/codex"
+            }
+        )
+
+        #expect(resolvedDirectory == CodexResourceSettings.legacyDefaultDirectory)
     }
 
     @Test func loginRequiresCodexAuthExecutable() throws {
@@ -415,16 +437,26 @@ struct CodexCommandFactoryTests {
         #expect(command.risk == .destructive)
     }
 
-    @Test func restartUsesBundleIdentifierAndWaitsForCodexProcesses() throws {
+    @Test func restartUsesRegisteredChatGPTBundleAndWaitsForItsProcesses() throws {
+        var requestedBundleIdentifiers: [String] = []
         let factory = CodexCommandFactory(
             resolver: .init(environmentPath: "", fileExists: { _ in false }),
-            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+            homeDirectory: URL(fileURLWithPath: "/Users/linda"),
+            applicationURLForBundleIdentifier: { bundleIdentifier in
+                requestedBundleIdentifiers.append(bundleIdentifier)
+                return URL(fileURLWithPath: "/Applications/ChatGPT.app")
+            },
+            isExecutableFile: { _ in false }
         )
 
         let command = factory.restartCodex()
         let script = try #require(command.arguments.last)
 
+        #expect(requestedBundleIdentifiers == ["com.openai.codex"])
+        #expect(command.title == "Restart ChatGPT")
         #expect(command.arguments.first == "-lc")
+        #expect(script.contains("bundle_id=com.openai.codex"))
+        #expect(script.contains("app_bundle=/Applications/ChatGPT.app"))
         #expect(script.contains(#"tell application id "com.openai.codex" to quit"#))
         #expect(script.contains("osascript quit Codex") == false)
         #expect(script.contains("pkill -9 -x Codex") == false)
@@ -478,24 +510,29 @@ struct CodexCommandFactoryTests {
     }
 
     @Test func forceCloseCodexTerminatesConfiguredCodexProcessesWithoutReopening() throws {
+        var requestedBundleIdentifiers: [String] = []
         let factory = CodexCommandFactory(
             resolver: .init(environmentPath: "", fileExists: { _ in false }),
-            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+            homeDirectory: URL(fileURLWithPath: "/Users/linda"),
+            applicationURLForBundleIdentifier: { bundleIdentifier in
+                requestedBundleIdentifiers.append(bundleIdentifier)
+                return URL(fileURLWithPath: "/Applications/ChatGPT.app")
+            },
+            isExecutableFile: { _ in false }
         )
 
-        let command = factory.forceCloseCodex(
-            codexResourceDirectory: "/Users/linda/My Apps/Codex.app/Contents/Resources"
-        )
+        let command = factory.forceCloseCodex()
         let script = try #require(command.arguments.last)
 
+        #expect(requestedBundleIdentifiers == ["com.openai.codex"])
         #expect(command.id == "force-close-codex")
-        #expect(command.title == "Force Close Codex")
+        #expect(command.title == "Force Close ChatGPT")
         #expect(command.risk == .destructive)
-        #expect(script.contains("app_bundle='/Users/linda/My Apps/Codex.app'"))
+        #expect(script.contains("app_bundle=/Applications/ChatGPT.app"))
         #expect(script.contains(#"process_marker="${app_bundle}/Contents/""#))
         #expect(script.contains("signalCodex TERM"))
         #expect(script.contains("signalCodex KILL"))
         #expect(script.contains("/usr/bin/open") == false)
-        #expect(command.displayCommand == "force close Codex at '/Users/linda/My Apps/Codex.app'")
+        #expect(command.displayCommand == "force close ChatGPT at /Applications/ChatGPT.app")
     }
 }

@@ -95,6 +95,10 @@ Template:
 
 ## UI Lessons
 
+- 2026-07-10: Symptom: **Force Close Codex** stopped closing the app after OpenAI renamed `Codex.app` to `ChatGPT.app`.
+  Root cause: the bundle ID stayed `com.openai.codex`, but the force-close script only matched process paths under `Codex.app`. The new processes run under `/Applications/ChatGPT.app/Contents/`.
+  Guardrail: resolve the current app bundle through `NSWorkspace.shared.urlForApplication(withBundleIdentifier:)`, build the process marker from that real path, keep the old resource path migration in `CodexResourceSettings`, and use the visible app name in lifecycle buttons. Verify safely with `plutil -p /Applications/ChatGPT.app/Contents/Info.plist` and a read-only `ps -axo pid=,command=` matcher. Do not run the real force-close command from inside the Codex task that is doing the verification.
+
 - 2026-07-08: Symptom: adding accent fills made some light-mode buttons and badges colorful but risked weak text/icon contrast.
   Root cause: Everforest Light accent colors are not safe as normal text on pale tinted surfaces, and some Dark Soft tinted surfaces need stronger text than the default foreground.
   Guardrail: keep accent colors as rails, borders, fills, and state cues; use `coloredSurfaceText` for text/icons on tinted surfaces. Verify with `ThemeTokensTests.coloredSurfaceTextPassesWCAGAndDeltaLStarOnTintedSurfaces`.
