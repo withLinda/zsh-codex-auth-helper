@@ -1,10 +1,11 @@
+
 # Codex Auth Helper
 
 **Codex Auth Helper** is a small macOS app for managing Codex accounts without memorizing `codex-auth` commands.
 
 It gives Codex App users a simple interface for login, save/update, switch, list, remove, restart, open, and force-close flows, while still showing the real terminal output so you always know what is happening.
 
-![Codex Auth Helper app showing account list output](docs/codex-auth-helper-screenshot.png)
+<img width="1093" height="929" alt="Snip20260711_1" src="https://github.com/user-attachments/assets/b5d8bbfb-0c4d-4319-8852-cdf7ea3674f4" />
 
 ## Why Use It
 
