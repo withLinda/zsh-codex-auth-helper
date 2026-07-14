@@ -4,6 +4,7 @@ struct AccountDashboardView: View {
     @ObservedObject var store: AccountListStore
     @State private var searchText = ""
 
+    let codexAppDisplayName: String
     let isRunning: Bool
     let refresh: () -> Void
     let switchAccount: (AccountListItem) -> Void
@@ -98,6 +99,7 @@ struct AccountDashboardView: View {
                         ForEach(visibleItems) { item in
                             AccountRowView(
                                 item: item,
+                                codexAppDisplayName: codexAppDisplayName,
                                 isRunning: isRunning,
                                 switchAccount: switchAccount,
                                 requestRemove: requestRemove
@@ -190,6 +192,7 @@ private struct AccountSearchField: View {
 
 private struct AccountRowView: View {
     let item: AccountListItem
+    let codexAppDisplayName: String
     let isRunning: Bool
     let switchAccount: (AccountListItem) -> Void
     let requestRemove: (AccountListItem) -> Void
@@ -256,14 +259,14 @@ private struct AccountRowView: View {
                     Button {
                         switchAccount(item)
                     } label: {
-                        Label("Switch", systemImage: "arrow.triangle.2.circlepath")
+                        Label("Switch & Open", systemImage: "play.fill")
                     }
                     .buttonStyle(AccountRowButtonStyle(tint: ThemeTokens.Colors.infoAccent, surface: ThemeTokens.Colors.infoSurface))
                     .disabled(isRunning)
-                    .accessibilityLabel("Switch account")
-                    .accessibilityHint("Switch to this saved account.")
-                    .help("Switch to \(item.email)")
-                    .frame(width: 92)
+                    .accessibilityLabel("Switch account and open \(codexAppDisplayName)")
+                    .accessibilityHint("Force closes the app, switches to this saved account, then opens the app again.")
+                    .help("Force close, switch to \(item.email), then open \(codexAppDisplayName)")
+                    .frame(width: 124)
                 }
 
                 Button {
@@ -278,7 +281,7 @@ private struct AccountRowView: View {
                 .help("Remove \(item.email)")
                 .frame(width: 96)
             }
-            .frame(width: 200, alignment: .trailing)
+            .frame(width: 232, alignment: .trailing)
         }
         .padding(.horizontal, ThemeTokens.Spacing.group)
         .padding(.vertical, ThemeTokens.Spacing.normal)

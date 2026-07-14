@@ -77,6 +77,7 @@ struct ContentView: View {
             VSplitView {
                 AccountDashboardView(
                     store: accountListStore,
+                    codexAppDisplayName: codexAppDisplayName,
                     isRunning: isBusy,
                     refresh: accountListStore.refresh,
                     switchAccount: switchToAccount,
@@ -267,7 +268,7 @@ struct ContentView: View {
         }
 
         Task {
-            await runPreflightSwitch(query: account.safeSelector)
+            await runPreflightSwitch(query: account.safeSelector, opensCodexAfterSwitch: true)
         }
     }
 
@@ -310,7 +311,7 @@ struct ContentView: View {
         transcriptStore.appendSystemLine("Login finished. codex-auth saved the account. Use Save / Update Login only if you want to set or change an alias.")
     }
 
-    private func runPreflightSwitch(query: String) async {
+    private func runPreflightSwitch(query: String, opensCodexAfterSwitch: Bool = false) async {
         guard isBusy == false else {
             transcriptStore.appendSystemLine("A command is already running. Stop it before starting another one.")
             return
@@ -325,7 +326,14 @@ struct ContentView: View {
                     transcriptStore.appendSystemLine(event.transcriptLine)
                 }
             }
-            let command = try commandFactory.switchAccount(query: query)
+            let command = if opensCodexAfterSwitch {
+                try commandFactory.switchAccountAndOpenCodex(
+                    query: query,
+                    codexResourceDirectory: codexResourceDirectory
+                )
+            } else {
+                try commandFactory.switchAccount(query: query)
+            }
             transcriptStore.appendSystemLine("Switch check passed. Running \(command.displayCommand).")
             isCheckingSwitch = false
             run(command) { result in
@@ -333,6 +341,9 @@ struct ContentView: View {
                     return
                 }
                 accountListStore.refresh()
+                if opensCodexAfterSwitch {
+                    codexAppMonitor.refresh()
+                }
             }
         } catch {
             isCheckingSwitch = false

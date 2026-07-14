@@ -35,6 +35,10 @@ Template:
 
 ## Tooling Lessons
 
+- 2026-07-14: Symptom: pushing `main` was rejected with `fetch first`, even though local and remote `main` matched at the start of the release work.
+  Root cause: two README commits were added on GitHub while the local release commit was being prepared.
+  Guardrail: fetch `origin/main` again immediately before pushing, inspect `HEAD...origin/main`, then use `git rebase origin/main` when the histories are compatible. Do not force-push shared `main`.
+
 - 2026-06-02: Symptom: notarization could not start with common profile names like `notary-tool`, `linda-notary`, or `notary`.
   Root cause: this repo uses the saved notarytool Keychain profile `codex-auth-helper-notary`.
   Guardrail: for Codex Auth Helper DMG notarization, first check `xcrun notarytool history --keychain-profile codex-auth-helper-notary`, then submit with that same profile. Do not write Apple ID passwords or app-specific passwords into scripts or docs.
@@ -94,6 +98,10 @@ Template:
   Guardrail: Switch should treat a different active auth file as normal while switching. It should refresh only when the selected saved access token is expired, within five minutes of expiry, or unreadable with `last_refresh` older than eight days. Use Health Check for strict validation of all saved OAuth accounts.
 
 ## UI Lessons
+
+- 2026-07-14: Symptom: a saved-account row switched the auth file, but the user still had to close and reopen ChatGPT by hand before the running app used the new account.
+  Root cause: the row action only ran `codex-auth switch`; app lifecycle commands were separate controls.
+  Guardrail: keep the row's **Switch & Open** action as one ordered command in `ZshCodexAuthHelper/Services/CodexCommandFactory.swift`: force close the app processes, run the checked switch, then reopen the registered `com.openai.codex` app. Reopen the app even when the local switch command fails, but never switch if force close did not finish. Verify order with `CodexCommandFactoryTests` and visually verify the `play.fill` row button without pressing it from the Codex task doing the check.
 
 - 2026-07-10: Symptom: **Force Close Codex** stopped closing the app after OpenAI renamed `Codex.app` to `ChatGPT.app`.
   Root cause: the bundle ID stayed `com.openai.codex`, but the force-close script only matched process paths under `Codex.app`. The new processes run under `/Applications/ChatGPT.app/Contents/`.

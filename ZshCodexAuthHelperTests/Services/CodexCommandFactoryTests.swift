@@ -535,4 +535,55 @@ struct CodexCommandFactoryTests {
         #expect(script.contains("/usr/bin/open") == false)
         #expect(command.displayCommand == "force close ChatGPT at /Applications/ChatGPT.app")
     }
+
+    @Test func switchAndOpenForceClosesBeforeSwitchingThenReopensRegisteredApp() throws {
+        var requestedBundleIdentifiers: [String] = []
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda"),
+            applicationURLForBundleIdentifier: { bundleIdentifier in
+                requestedBundleIdentifiers.append(bundleIdentifier)
+                return URL(fileURLWithPath: "/Applications/ChatGPT.app")
+            },
+            isExecutableFile: { _ in false }
+        )
+
+        let command = try factory.switchAccountAndOpenCodex(query: "  aisy  ")
+        let script = try #require(command.arguments.last)
+        let forceCloseIndex = try #require(script.range(of: "signalCodex TERM")?.lowerBound)
+        let switchIndex = try #require(script.range(of: "\"$codex_auth\" switch \"$switch_query\"")?.lowerBound)
+        let openIndex = try #require(script.range(of: "/usr/bin/open \"$app_bundle\"")?.lowerBound)
+
+        #expect(requestedBundleIdentifiers == ["com.openai.codex"])
+        #expect(command.id == "switch-and-open-codex")
+        #expect(command.title == "Switch & Open ChatGPT")
+        #expect(command.systemImage == "play.fill")
+        #expect(command.risk == .restartsApplication)
+        #expect(command.environment["PATH"] != nil)
+        #expect(script.contains("app_bundle=/Applications/ChatGPT.app"))
+        #expect(script.contains("codex_auth=/opt/homebrew/bin/codex-auth"))
+        #expect(script.contains("switch_query=aisy"))
+        #expect(forceCloseIndex < switchIndex)
+        #expect(switchIndex < openIndex)
+        #expect(script.contains("exit \"$switch_status\""))
+    }
+
+    @Test func switchAndOpenRejectsEmptySelectorBeforeLifecycleWork() {
+        let resolver = ExecutableResolver(
+            environmentPath: "/opt/homebrew/bin",
+            fileExists: { $0 == "/opt/homebrew/bin/codex-auth" }
+        )
+        let factory = CodexCommandFactory(
+            resolver: resolver,
+            homeDirectory: URL(fileURLWithPath: "/Users/linda")
+        )
+
+        #expect(throws: CommandFactoryError.missingSwitchQuery) {
+            try factory.switchAccountAndOpenCodex(query: "   ")
+        }
+    }
 }

@@ -10,12 +10,12 @@ It gives Codex App users a simple interface for login, save/update, switch, list
 
 ## Why Use It
 
-- Switch Codex accounts faster from a desktop app.
+- Switch Codex accounts and reopen the app with one button press.
 - Use `codex-auth` without typing the same commands again and again.
 - Save or update an auth file. You can add a clear alias, such as `main`, `work`, or `personal`, but the alias is optional when updating an existing account.
 - See command output inside the app, including prompts you may need to answer.
 - Open detected login links in Chrome Incognito from the built-in terminal panel.
-- Restart, open, or force-close Codex App without mixing those actions together.
+- Restart, open, or force-close Codex App when you need a separate recovery action.
 
 Think of it as a control panel for `codex-auth`: the app gives you buttons and a terminal view, while `codex-auth` still does the account management.
 
@@ -30,7 +30,8 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 - **Health Check**: checks every saved ChatGPT OAuth account one at a time, refreshes valid tokens, and ends with sorted account summaries.
 - **Update codex-auth**: installs or updates the app-owned `codex-auth` tool without changing your global terminal copy.
 - **Remove Account**: prepares `codex-auth remove` so you can type the alias.
-- **Restart ChatGPT**: quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and then reopens it after account changes.
+- **Switch & Open**: force-closes the ChatGPT desktop app, switches the saved account, and opens ChatGPT again in one sequence.
+- **Restart ChatGPT**: quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and then reopens it.
 - **Open / Force Close ChatGPT**: shows the right action for the current ChatGPT desktop app state.
 - **Interactive terminal**: send input to running commands from the app.
 - **Link detection**: open the latest detected login link in Chrome Incognito with one click.
@@ -60,13 +61,13 @@ For most users, this is the easiest way to install or update the app. You do not
 
 Open the [latest GitHub release](https://github.com/withLinda/zsh-codex-auth-helper/releases/latest), then go to **Assets** and download the newest DMG file. For this release, download:
 
-- `CodexAuthHelper-v2026.07.10.1.dmg`
+- `CodexAuthHelper-v2026.07.14.1.dmg`
 
 Do not use the **Source code** downloads for normal installation. Those files are only the project source.
 
 If you also want to check the download, download the matching checksum file too:
 
-- `CodexAuthHelper-v2026.07.10.1.dmg.sha256`
+- `CodexAuthHelper-v2026.07.14.1.dmg.sha256`
 
 The `.dmg` file is the installer. The `.sha256` file lets you check that the download was not damaged. Put both files in the same folder, then run this command from that folder:
 
@@ -112,8 +113,7 @@ Use this flow the first time:
 5. Finish the login in the browser. When login succeeds, `codex-auth` saves the account automatically.
 6. If you want to set or change an alias, use **Save / Update Login**. The default auth file is `~/.codex/auth.json`.
 7. Click **List Accounts** to confirm the saved account appears.
-8. Click **Switch Account...**, type the alias, email, account name, or row number, then press Return.
-9. Click **Restart ChatGPT** so the ChatGPT desktop app fully reloads with the selected Codex account.
+8. In a saved-account row, click **Switch & Open**. The app force-closes ChatGPT, switches the account, and opens ChatGPT again.
 
 ## Complete Usage Guide
 
@@ -129,7 +129,8 @@ Use this flow the first time:
 - **Login** runs `codex-auth login --device-auth`. It signs in through the browser using an isolated codex-auth login flow, then saves the finished login through `codex-auth`. Use **Save / Update Login** only when you want to set an alias manually or update a chosen auth file.
 - **Open Blank Incognito** opens a blank Chrome Incognito window. It uses the same Chrome profile as your normal Chrome app, so saved passwords and passkeys can still be offered by Chrome.
 - **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching. For OAuth accounts, it refreshes only when Codex would need renewal now: when the access token is expired or within five minutes of expiry, or when expiry cannot be read and `last_refresh` is older than eight days. If the saved access token is still fresh, Switch does not ask OpenAI and does not spend the refresh token. If `~/.codex/auth.json` is a newer matching login, the app copies it into the saved account file first. The terminal prints safe `Switch check:` lines, but never prints full tokens. If OpenAI accepts a needed refresh, the app saves the new rotated token, then runs `codex-auth switch`. If a needed refresh finds an expired, already used, or revoked token, the wrong saved file, or a save failure, the switch is blocked. API-key accounts skip OAuth refresh because they do not use refresh tokens. If more than one account matches, use a more specific value.
-- **Restart ChatGPT** quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and opens it again. Use this after switching accounts. A simple way to think about it: switching changes the key on disk, and restarting makes Codex pick up the new key.
+- **Switch & Open** in a saved-account row force-closes ChatGPT, switches to that saved account, and opens ChatGPT again. One button runs all three steps in order. If the switch command fails after ChatGPT closes, the app still opens ChatGPT again so you are not left with a closed app.
+- **Restart ChatGPT** quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and opens it again. Use it when you need to reload the current account without switching.
 - **Open ChatGPT** appears when the ChatGPT desktop app is closed. It opens ChatGPT without changing accounts.
 - **Force Close ChatGPT** appears when the ChatGPT desktop app is open. Use it only when ChatGPT is stuck, did not close during restart, or Codex still seems to be using the wrong account. It can kill the app processes directly.
 - **List Accounts** runs `codex-auth list`. Use it to see saved accounts and row numbers.
@@ -213,7 +214,7 @@ If an account needs login again, use **Login** and finish the browser login. Use
 - **Chrome is missing**: install Google Chrome, or copy the login link from the terminal output and open it manually.
 - **ChatGPT opens from the wrong place**: open **Codex Auth Helper > Settings** and set the Codex resources path for your ChatGPT or older Codex app install.
 - **Health Check says `needs login`**: the saved login cannot refresh. Log in again, then save or update that account.
-- **Codex still uses the old account after switching**: click **Restart ChatGPT**. Use **Force Close ChatGPT** only if the ChatGPT desktop app does not close normally.
+- **Codex still uses the old account after switching**: use the saved account row's **Switch & Open** button. It force-closes ChatGPT before switching, then opens it again. Use **Force Close ChatGPT** only as a separate recovery action.
 
 ## Built On codex-auth
 

@@ -145,6 +145,62 @@ struct CodexCommandFactory {
         )
     }
 
+    func switchAccountAndOpenCodex(
+        query: String,
+        codexResourceDirectory: String = CodexResourceSettings.defaultDirectory
+    ) throws -> CommandDefinition {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmedQuery.isEmpty == false else {
+            throw CommandFactoryError.missingSwitchQuery
+        }
+
+        let codexAuthExecutable = try codexAuthExecutable()
+        let bundleIdentifier = CodexResourceSettings.bundleIdentifier
+        let appBundlePath = resolvedCodexAppBundlePath(forResourceDirectory: codexResourceDirectory)
+        let appDisplayName = CodexResourceSettings.appDisplayName(forAppBundlePath: appBundlePath)
+        let script = """
+        bundle_id=\(ShellQuoting.quote(bundleIdentifier))
+        codex_auth=\(ShellQuoting.quote(codexAuthExecutable))
+        switch_query=\(ShellQuoting.quote(trimmedQuery))
+        \(codexProcessControlScript(appBundlePath: appBundlePath))
+
+        signalCodex TERM
+        waitForCodexExit 10 0.1 || true
+
+        if [[ -n "$(codexPids)" ]]; then
+          signalCodex KILL
+          waitForCodexExit 20 0.1 || true
+        fi
+
+        if [[ -n "$(codexPids)" ]]; then
+          print -u2 "Could not force close \(appDisplayName). Account was not switched."
+          exit 1
+        fi
+
+        "$codex_auth" switch "$switch_query"
+        switch_status=$?
+
+        if [[ -d "$app_bundle" ]]; then
+          /usr/bin/open "$app_bundle"
+        else
+          /usr/bin/open -b "$bundle_id"
+        fi
+
+        exit "$switch_status"
+        """
+
+        return CommandDefinition(
+            id: "switch-and-open-codex",
+            title: "Switch & Open \(appDisplayName)",
+            systemImage: "play.fill",
+            executable: "/bin/zsh",
+            arguments: ["-lc", script],
+            environment: codexAuthEnvironment(),
+            risk: .restartsApplication,
+            displayCommand: "force close \(appDisplayName); \(ShellQuoting.displayCommand(executable: "codex-auth", arguments: ["switch", trimmedQuery])); open \(ShellQuoting.quote(appBundlePath))"
+        )
+    }
+
     func list() throws -> CommandDefinition {
         let executable = try codexAuthExecutable()
         return CommandDefinition(
