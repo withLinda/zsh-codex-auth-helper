@@ -1,16 +1,24 @@
-
 # Codex Auth Helper
 
 **Codex Auth Helper** is a small macOS app for managing Codex accounts without memorizing `codex-auth` commands.
 
-It gives Codex App users a simple interface for login, save/update, switch, list, remove, restart, open, and force-close flows, while still showing the real terminal output so you always know what is happening.
+It gives ChatGPT desktop app users a simple interface for login, save/update, switch, remove, restart, open, and force-close flows, while still showing the real terminal output so you always know what is happening.
 
-<img width="1093" height="929" alt="Snip20260711_1" src="https://github.com/user-attachments/assets/437de6c2-5953-4b13-80c4-6c9ca4f5213c" />
+![Codex Auth Helper beside CodexPlusBar](docs/images/codex-auth-helper-with-codexplusbar.png)
 
+## See Live Account Limits With CodexPlusBar
+
+Codex Auth Helper handles login, saved accounts, health checks, and account switching. To see the remaining usage for many accounts, use [CodexPlusBar](https://github.com/withLinda/CodexPlusBar). It shows the remaining 5-hour and 7-day usage percentages, reset times, sign-in state, and account expiry when the provider supplies it.
+
+The two apps are separate, but they work well side by side:
+
+1. Use CodexPlusBar to see which account has enough usage left.
+2. Use **Switch & Open** in Codex Auth Helper to activate that account and reopen ChatGPT.
 
 ## Why Use It
 
 - Switch Codex accounts and reopen the app with one button press.
+- See the active account, plan, alias, account name, and last-use information in one saved-account dashboard.
 - Use `codex-auth` without typing the same commands again and again.
 - Save or update an auth file. You can add a clear alias, such as `main`, `work`, or `personal`, but the alias is optional when updating an existing account.
 - See command output inside the app, including prompts you may need to answer.
@@ -23,13 +31,13 @@ Think of it as a control panel for `codex-auth`: the app gives you buttons and a
 
 - **Login**: runs `codex-auth login --device-auth`, which saves the account through codex-auth's isolated login flow.
 - **Save / Update Login**: saves an auth JSON file. Leave the alias blank to update an existing saved account without changing its alias.
-- **Switch Account**: prepares `codex-auth switch` so you can type the alias.
+- **Saved Accounts dashboard**: loads the local account registry automatically, highlights the active account, and shows useful account details.
+- **Automatic updates**: notices changes to the saved-account registry and selected auth file, and also provides a manual **Refresh** button.
 - **Search saved accounts**: filter the saved-account list by email, alias, account name, plan, or auth mode.
 - **Open Blank Incognito**: opens a blank Chrome Incognito window from the sidebar, using your normal Chrome profile so Chrome can still offer saved passwords and passkeys.
-- **List Accounts**: shows accounts managed by `codex-auth`.
 - **Health Check**: checks every saved ChatGPT OAuth account one at a time, refreshes valid tokens, and ends with sorted account summaries.
-- **Update codex-auth**: installs or updates the app-owned `codex-auth` tool without changing your global terminal copy.
-- **Remove Account**: prepares `codex-auth remove` so you can type the alias.
+- **Update codex-auth**: installs or updates the app-owned `codex-auth` tool without changing your global terminal copy, then reports the installed version.
+- **Remove with confirmation**: removes a saved account from its row after you confirm. It does not delete the OpenAI account.
 - **Switch & Open**: force-closes the ChatGPT desktop app, switches the saved account, and opens ChatGPT again in one sequence.
 - **Restart ChatGPT**: quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and then reopens it.
 - **Open / Force Close ChatGPT**: shows the right action for the current ChatGPT desktop app state.
@@ -82,11 +90,7 @@ Then install it:
 3. If Finder asks whether to replace an older copy, choose **Replace**.
 4. Open `Codex Auth Helper` from `Applications`.
 
-The DMG is Developer ID-signed and notarized. If macOS still shows a warning on first launch, right-click `Codex Auth Helper`, choose **Open**, then choose **Open** again.
-
-If macOS says `ZshCodexAuthHelper` was blocked, open **System Settings > Privacy & Security**, then click **Open Anyway**.
-
-![macOS Privacy & Security showing the Open Anyway button for ZshCodexAuthHelper](docs/images/dmg-install-open-anyway.png)
+The DMG is Developer ID-signed, notarized, and stapled. macOS should verify it normally when you open it.
 
 ### Build From Source
 
@@ -112,7 +116,7 @@ Use this flow the first time:
 4. If the terminal shows a login link, click **Open Incognito**. If it shows a one-time code, click **Copy Code** and paste it into the browser page.
 5. Finish the login in the browser. When login succeeds, `codex-auth` saves the account automatically.
 6. If you want to set or change an alias, use **Save / Update Login**. The default auth file is `~/.codex/auth.json`.
-7. Click **List Accounts** to confirm the saved account appears.
+7. Check that the account appears in **Saved Accounts**. The list updates automatically; click **Refresh** if needed.
 8. In a saved-account row, click **Switch & Open**. The app force-closes ChatGPT, switches the account, and opens ChatGPT again.
 
 ## Complete Usage Guide
@@ -124,26 +128,36 @@ Use this flow the first time:
 - **Auth file** is the file to save or update. The normal Codex file is `~/.codex/auth.json`.
 - **Save / Update Login** runs `codex-auth import <auth-file>`. Use it after logging in, after reauthenticating, or after changing the auth file path.
 
+### Saved Accounts Dashboard
+
+- The dashboard reads the `codex-auth` registry automatically. It also notices registry changes made outside the app.
+- The active account is marked **Active** and **Current**. Each row can also show the plan, alias, account name, and last-use information when those values exist.
+- **Refresh** reloads the account list immediately.
+- Search filters by email, alias, account name, plan, or auth mode. Clear the search to show every account again.
+- **Switch & Open** uses a safe unique selector for the row. It checks the saved login, force-closes ChatGPT, switches the account, and opens ChatGPT again. If the switch fails after ChatGPT closes, the app still reopens ChatGPT.
+- **Remove** shows a confirmation first. Removing a saved login does not delete the OpenAI account.
+
 ### Command Buttons
 
 - **Login** runs `codex-auth login --device-auth`. It signs in through the browser using an isolated codex-auth login flow, then saves the finished login through `codex-auth`. Use **Save / Update Login** only when you want to set an alias manually or update a chosen auth file.
 - **Open Blank Incognito** opens a blank Chrome Incognito window. It uses the same Chrome profile as your normal Chrome app, so saved passwords and passkeys can still be offered by Chrome.
-- **Switch Account...** prepares `codex-auth switch` in the terminal input. Add an alias, full email, email fragment, account name, or row number from **List Accounts**, then press Return. The app checks the selected saved login before switching. For OAuth accounts, it refreshes only when Codex would need renewal now: when the access token is expired or within five minutes of expiry, or when expiry cannot be read and `last_refresh` is older than eight days. If the saved access token is still fresh, Switch does not ask OpenAI and does not spend the refresh token. If `~/.codex/auth.json` is a newer matching login, the app copies it into the saved account file first. The terminal prints safe `Switch check:` lines, but never prints full tokens. If OpenAI accepts a needed refresh, the app saves the new rotated token, then runs `codex-auth switch`. If a needed refresh finds an expired, already used, or revoked token, the wrong saved file, or a save failure, the switch is blocked. API-key accounts skip OAuth refresh because they do not use refresh tokens. If more than one account matches, use a more specific value.
-- **Switch & Open** in a saved-account row force-closes ChatGPT, switches to that saved account, and opens ChatGPT again. One button runs all three steps in order. If the switch command fails after ChatGPT closes, the app still opens ChatGPT again so you are not left with a closed app.
 - **Restart ChatGPT** quits the ChatGPT desktop app, waits for its Codex helper processes to exit, and opens it again. Use it when you need to reload the current account without switching.
 - **Open ChatGPT** appears when the ChatGPT desktop app is closed. It opens ChatGPT without changing accounts.
 - **Force Close ChatGPT** appears when the ChatGPT desktop app is open. Use it only when ChatGPT is stuck, did not close during restart, or Codex still seems to be using the wrong account. It can kill the app processes directly.
-- **List Accounts** runs `codex-auth list`. Use it to see saved accounts and row numbers.
-- **Search saved accounts** filters the visible saved-account rows. Search by email, alias, account name, plan, or auth mode. Empty search text shows every saved account again.
 - **Update codex-auth** runs `npm install --global --prefix ~/Library/Application Support/CodexAuthHelper/codex-auth-tool @loongphy/codex-auth@latest` or `@next`, depending on the Settings channel. It updates only the app-owned tool. It does not run `sudo` and does not change your global terminal `codex-auth`.
 - **Health Check** checks saved ChatGPT OAuth accounts. See the next section for details and timing.
-- **Remove Account** prepares `codex-auth remove` in the terminal input. Add the alias or selector, then press Return. This removes the saved account from `codex-auth`; it does not delete your OpenAI account.
+
+### Switch Safety Check
+
+Every account switch checks the selected saved login before changing accounts. For OAuth accounts, it refreshes only when Codex would need renewal now: when the access token is expired or within five minutes of expiry, or when expiry cannot be read and `last_refresh` is older than eight days. If the saved access token is still fresh, the switch does not ask OpenAI and does not spend the refresh token.
+
+If `~/.codex/auth.json` is a newer matching login, the app copies it into the saved account file first. The terminal prints safe `Switch check:` lines, but never prints full tokens. If OpenAI accepts a needed refresh, the app saves the new rotated token, then runs `codex-auth switch`. If a needed refresh finds an expired, already used, or revoked token, the wrong saved file, or a save failure, the switch is blocked. API-key accounts skip OAuth refresh because they do not use refresh tokens.
 
 ### Terminal Panel
 
 - The terminal shows the real command and output. Read it when something fails, because it usually explains the next step.
 - When a command is running, the input box sends text to that command. Use it for prompts that need an answer.
-- When no command is running, the input box accepts only prepared **Switch Account...** or **Remove Account** commands.
+- When no command is running, the input box accepts only `codex-auth switch <selector>` or `codex-auth remove <selector>`. Other commands are blocked. The saved-account row buttons are easier for normal use.
 - **Open Incognito** appears when the terminal detects a login link. It opens the latest detected HTTP or HTTPS link in Google Chrome Incognito.
 - **Copy Code** appears when the terminal detects a one-time login code.
 - **Stop** stops the running command.
@@ -183,7 +197,7 @@ Rule of thumb:
 
 - Run **Health Check about once per week** for normal multi-account use.
 - Also run it before a long or important Codex session, after adding or updating accounts, after a failed switch or login, or before using an account that has been idle for a long time.
-- You do not need **Health Check** after every small switch. **Switch Account...** checks only the selected account and refreshes it only when Codex would need renewal now. **Health Check** validates every saved OAuth account, so it is still useful before important work or about once per week.
+- You do not need **Health Check** after every small switch. Each account switch checks only the selected account and refreshes it only when Codex would need renewal now. **Health Check** validates every saved OAuth account, so it is still useful before important work or about once per week.
 
 Benefits:
 
@@ -196,7 +210,7 @@ Risks and tradeoffs:
 
 - It makes extra auth-server requests. Running it too often is usually not useful.
 - It writes local auth files when tokens refresh.
-- It rotates tokens for every saved OAuth account it checks. **Switch Account...** rotates the selected OAuth account token only when that account needs renewal now. If a refresh is interrupted by a crash, power loss, or disk problem, you may need to log in again.
+- It rotates tokens for every saved OAuth account it checks. A normal account switch rotates the selected OAuth account token only when that account needs renewal now. If a refresh is interrupted by a crash, power loss, or disk problem, you may need to log in again.
 - If OpenAI has expired, revoked, or rejected a refresh token, Health Check cannot fix that account by itself. It will mark the account as needing login.
 
 If an account needs login again, use **Login** and finish the browser login. Use **Save / Update Login** afterward only if you want to set or change an alias.
@@ -207,10 +221,10 @@ If an account needs login again, use **Login** and finish the browser login. Use
 - **Could not find `codex-auth`**: click **Update codex-auth** first. If you prefer a global fallback, install it with `npm install -g @loongphy/codex-auth`, then reopen the app.
 - **No auth file**: check that the **Auth file** field points to `~/.codex/auth.json`, or log in again.
 - **Unreadable auth**: the selected auth file is not valid JSON or cannot be read. Log in again, then save the login.
-- **No `codex-auth` registry was found**: use **Save / Update Login** or **List Accounts** so `codex-auth` can create or refresh its account registry.
-- **Switch Account says more than one account matches**: run **List Accounts**, then switch with a full email, exact alias, or row number.
-- **Switch Account says the refresh token was already used**: this can happen only when Switch had to refresh because the saved access token needed renewal. Click **Login**, finish browser login, then switch again. If this happens every time, read the `Switch check:` lines. They should show whether the saved account file was stale, whether `~/.codex/auth.json` was newer, whether saving the new token failed, or whether another Codex or `codex-auth` process probably used the token first.
-- **Switch Account says the saved auth file does not match the selected account**: the saved file may belong to a different account. The app blocks the switch because switching from the wrong saved file is unsafe. Click **Login** for the selected account, then use **List Accounts** or **Save / Update Login** if you need to rebuild the saved registry or alias.
+- **No `codex-auth` registry was found**: finish **Login** or use **Save / Update Login**, then click **Refresh** in Saved Accounts.
+- **A manual switch says more than one account matches**: use a full email, exact alias, or row number. The row-level **Switch & Open** action chooses a safe unique selector automatically.
+- **A switch says the refresh token was already used**: this can happen only when the switch had to refresh because the saved access token needed renewal. Click **Login**, finish browser login, then switch again. If this happens every time, read the `Switch check:` lines. They should show whether the saved account file was stale, whether `~/.codex/auth.json` was newer, whether saving the new token failed, or whether another Codex or `codex-auth` process probably used the token first.
+- **A switch says the saved auth file does not match the selected account**: the saved file may belong to a different account. The app blocks the switch because switching from the wrong saved file is unsafe. Click **Login** for the selected account, then use **Save / Update Login** and **Refresh** if you need to rebuild the saved registry or alias.
 - **Chrome is missing**: install Google Chrome, or copy the login link from the terminal output and open it manually.
 - **ChatGPT opens from the wrong place**: open **Codex Auth Helper > Settings** and set the Codex resources path for your ChatGPT or older Codex app install.
 - **Health Check says `needs login`**: the saved login cannot refresh. Log in again, then save or update that account.

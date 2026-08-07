@@ -1,7 +1,7 @@
 ---
 title: "Learnings"
 description: "Repo-specific lessons for future agents working on zsh-codexauth-helper."
-last_updated: "2026-07-08"
+last_updated: "2026-08-08"
 ---
 
 # Learnings
@@ -158,6 +158,10 @@ Template:
   Guardrail: use injected request transports and fake `OAuthTokenRefreshing` implementations in tests; never use saved personal auth files for verification.
 
 ## Documentation Lessons
+
+- 2026-08-08: Symptom: the README told users to click **List Accounts**, **Switch Account**, and **Remove Account** buttons that are no longer in the current interface.
+  Root cause: the Saved Accounts dashboard replaced those old button flows with automatic registry updates and row-level **Switch & Open** and **Remove** actions, but some older README text remained.
+  Guardrail: before documenting controls, compare the README with `ZshCodexAuthHelper/Views/CommandRailView.swift`, `ZshCodexAuthHelper/Views/AccountDashboardView.swift`, and `ZshCodexAuthHelper/Views/ContentView.swift`. Describe **Saved Accounts**, **Refresh**, **Switch & Open**, and the confirmed row removal. The idle terminal accepts only manually typed `codex-auth switch <selector>` and `codex-auth remove <selector>` commands.
 
 - 2026-06-02: Symptom: old wording said normal switch did not refresh OAuth tokens.
   Root cause: Switch behavior is conditional: it refreshes only when Codex would need renewal now, while Health Check always validates saved OAuth accounts.
